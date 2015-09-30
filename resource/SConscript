@@ -83,3 +83,4 @@ elif target_os == 'darwin':
 
 elif target_os == 'arduino':
 	SConscript('csdk/stack/samples/arduino/SimpleClientServer/ocserver/SConscript')
+	SConscript('csdk/stack/samples/arduino/SimpleClientServer/demo_server/SConscript')

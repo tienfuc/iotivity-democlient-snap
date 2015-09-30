@@ -44,19 +44,19 @@
 
 const char *getResult(OCStackResult result);
 
-#define TAG "ArduinoServer"
+#define TAG "DemoServer"
 
 int gLightUnderObservation = 0;
-void createDemoResource();
+void createDHT11Resource();
 
-/* Structure to represent a Light resource */
-typedef struct LIGHTRESOURCE{
+/* Structure to represent a DHT11 resource */
+typedef struct DHT11RESOURCE{
     OCResourceHandle handle;
     bool state;
-    int power;
-} LightResource;
+    int data;
+} DHT11Resource;
 
-static LightResource Light;
+static DHT11Resource temp, humidity;
 
 #ifdef ARDUINOWIFI
 // Arduino WiFi Shield
@@ -153,6 +153,7 @@ OCEntityHandlerResult OCEntityHandlerCb(OCEntityHandlerFlag flag, OCEntityHandle
     OCEntityHandlerResult ehRet = OC_EH_OK;
     OCEntityHandlerResponse response = {0};
     OCRepPayload* payload = OCRepPayloadCreate();
+    OC_LOG(INFO, TAG, ("Gerald someone request resource"));
     if(!payload)
     {
         OC_LOG(ERROR, TAG, ("Failed to allocate Payload"));
@@ -165,14 +166,14 @@ OCEntityHandlerResult OCEntityHandlerCb(OCEntityHandlerFlag flag, OCEntityHandle
 
         if(OC_REST_GET == entityHandlerRequest->method)
         {
-            OCRepPayloadSetUri(payload, "/a/light");
+            OCRepPayloadSetUri(payload, "/demo/temp");
             OCRepPayloadSetPropBool(payload, "state", true);
             OCRepPayloadSetPropInt(payload, "power", 10);
         }
         else if(OC_REST_PUT == entityHandlerRequest->method)
         {
             //Do something with the 'put' payload
-            OCRepPayloadSetUri(payload, "/a/light");
+            OCRepPayloadSetUri(payload, "/demo/temp");
             OCRepPayloadSetPropBool(payload, "state", false);
             OCRepPayloadSetPropInt(payload, "power", 0);
         }
@@ -226,11 +227,11 @@ void *ChangeLightRepresentation (void *param)
     // Matching the timing that the Linux Sample Server App uses for the same functionality.
     if(modCounter % 10 == 0)
     {
-        Light.power += 5;
+        temp.data += 5;
         if (gLightUnderObservation)
         {
-            OC_LOG_V(INFO, TAG, " =====> Notifying stack of new power level %d\n", Light.power);
-            result = OCNotifyAllObservers (Light.handle, OC_NA_QOS);
+            OC_LOG_V(INFO, TAG, " =====> Notifying stack of new power level %d\n", temp.data);
+            result = OCNotifyAllObservers (temp.handle, OC_NA_QOS);
             if (OC_STACK_NO_OBSERVERS == result)
             {
                 gLightUnderObservation = 0;
@@ -246,7 +247,7 @@ void setup()
     // Add your initialization code here
     // Note : This will initialize Serial port on Arduino at 115200 bauds
     OC_LOG_INIT();
-    OC_LOG(DEBUG, TAG, ("DEMOServer is starting..."));
+    OC_LOG(DEBUG, TAG, ("DemoServer is starting..."));
 
     // Connect to Ethernet or WiFi network
     if (ConnectToNetwork() != 0)
@@ -262,8 +263,8 @@ void setup()
         return;
     }
 
-    // Declare and create the example resource: Light
-    createDemoResource();
+    // Declare and create the example resource: temp 
+    createDHT11Resource();
 }
 
 // The loop function is called in an endless loop
@@ -285,17 +286,27 @@ void loop()
     ChangeLightRepresentation(NULL);
 }
 
-void createDemoResource()
+void createDHT11Resource()
 {
-    Light.state = false;
-    OCStackResult res = OCCreateResource(&Light.handle,
-            "core.light",
+    temp.state = false;
+    OCStackResult res = OCCreateResource(&temp.handle,
+            "core.temp",
             OC_RSRVD_INTERFACE_DEFAULT,
-            "/a/light",
+            "/demo/temp",
             OCEntityHandlerCb,
             NULL,
             OC_DISCOVERABLE|OC_OBSERVABLE);
-    OC_LOG_V(INFO, TAG, "Created Light resource with result: %s", getResult(res));
+    OC_LOG_V(INFO, TAG, "Created Temperature resource with result: %s", getResult(res));
+
+    humidity.state = false;
+    res = OCCreateResource(&humidity.handle,
+            "core.humidity",
+            OC_RSRVD_INTERFACE_DEFAULT,
+            "/demo/humidity",
+            OCEntityHandlerCb,
+            NULL,
+            OC_DISCOVERABLE|OC_OBSERVABLE);
+    OC_LOG_V(INFO, TAG, "Created humidity resource with result: %s", getResult(res));
 }
 
 const char *getResult(OCStackResult result) {
