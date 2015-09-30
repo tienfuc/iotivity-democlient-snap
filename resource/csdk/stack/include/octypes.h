@@ -245,7 +245,7 @@ extern "C" {
 #define OC_RSRVD_DATA_MODEL_VERSION     "dmv"
 
 /** Device specification version.*/
-#define OC_SPEC_VERSION                "0.9.0"
+#define OC_SPEC_VERSION                "0.9.2"
 
 /** Device Data Model version.*/
 #define OC_DATA_MODEL_VERSION          "sec.0.95"
@@ -857,6 +857,11 @@ typedef struct
 
 #ifdef RA_ADAPTER
 /**
+ * callback for bound JID
+ */
+typedef void (*jid_bound_cb)(char *jid);
+
+/**
  * CA Remote Access information for XMPP Client
  *
  */
@@ -869,6 +874,7 @@ typedef struct
     char *password;     /**< login password */
     char *resource;     /**< specific resource for login */
     char *user_jid;     /**< specific JID for login */
+    jid_bound_cb jidbound;  /**< callback when JID bound */
 } OCRAInfo_t;
 #endif  /* RA_ADAPTER */
 

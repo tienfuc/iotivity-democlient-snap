@@ -31,7 +31,7 @@ if target_os not in ['arduino','darwin']:
     SConscript('things-manager/SConscript')
 
     # Build notification manager project
-    SConscript('notification-manager/SConscript')
+    SConscript('resource-hosting/SConscript')
 
     # Build resource-encapsulation project
     SConscript('resource-encapsulation/SConscript')
@@ -39,3 +39,7 @@ if target_os not in ['arduino','darwin']:
     # Build simulator module
     if target_os in ['linux'] and env.get('SIMULATOR', False):
         SConscript('simulator/SConscript')
+
+# Build EasySetup module
+if target_os in ['arduino','android', 'linux']:
+    SConscript('easy-setup/SConscript')
