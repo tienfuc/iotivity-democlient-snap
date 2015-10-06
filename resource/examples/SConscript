@@ -67,6 +67,8 @@ if target_os in ['darwin', 'ios']:
 ######################################################################
 # Source files and Targets
 ######################################################################
+demoserver = examples_env.Program('demoserver', 'demoserver.cpp')
+democlient = examples_env.Program('democlient', 'democlient.cpp')
 simpleserver = examples_env.Program('simpleserver', 'simpleserver.cpp')
 simpleclient = examples_env.Program('simpleclient', 'simpleclient.cpp')
 simpleserverHQ = examples_env.Program('simpleserverHQ', 'simpleserverHQ.cpp')
@@ -87,7 +89,8 @@ devicediscoveryserver = examples_env.Program('devicediscoveryserver', 'devicedis
 devicediscoveryclient = examples_env.Program('devicediscoveryclient', 'devicediscoveryclient.cpp')
 threadingsample = examples_env.Program('threadingsample', 'threadingsample.cpp')
 
-Alias("examples", [simpleserver, simpleclient,
+Alias("examples", [demoserver, democlient,
+                simpleserver, simpleclient,
 		simpleserverHQ, simpleclientHQ,
 		fridgeserver, fridgeclient,
 		presenceserver, presenceclient,

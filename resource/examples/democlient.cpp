@@ -38,20 +38,20 @@ std::shared_ptr<OCResource> curResource;
 static ObserveType OBSERVE_TYPE_TO_USE = ObserveType::Observe;
 std::mutex curResourceLock;
 
-class Light
+class Demo
 {
 public:
 
-    bool m_state;
-    int m_power;
+    int m_temp;
+    int m_humidity;
     std::string m_name;
 
-    Light() : m_state(false), m_power(0), m_name("")
+    Demo() : m_temp(0), m_humidity(0), m_name("")
     {
     }
 };
 
-Light mylight;
+Demo mydemo;
 
 int observe_count()
 {
@@ -77,13 +77,13 @@ void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& re
 
             std::cout << "OBSERVE RESULT:"<<std::endl;
             std::cout << "\tSequenceNumber: "<< sequenceNumber << std::endl;
-            rep.getValue("state", mylight.m_state);
-            rep.getValue("power", mylight.m_power);
-            rep.getValue("name", mylight.m_name);
+            rep.getValue("temperature", mydemo.m_temp);
+            rep.getValue("humidity", mydemo.m_humidity);
+            rep.getValue("name", mydemo.m_name);
 
-            std::cout << "\tstate: " << mylight.m_state << std::endl;
-            std::cout << "\tpower: " << mylight.m_power << std::endl;
-            std::cout << "\tname: " << mylight.m_name << std::endl;
+            std::cout << "\ttemperature: " << mydemo.m_temp << std::endl;
+            std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
+            std::cout << "\tname: " << mydemo.m_name << std::endl;
 
             if(observe_count() == 11)
             {
@@ -132,13 +132,13 @@ void onPost2(const HeaderOptions& /*headerOptions*/,
             }
             else
             {
-                rep.getValue("state", mylight.m_state);
-                rep.getValue("power", mylight.m_power);
-                rep.getValue("name", mylight.m_name);
+                rep.getValue("temperature", mydemo.m_temp);
+                rep.getValue("humidity", mydemo.m_humidity);
+                rep.getValue("name", mydemo.m_name);
 
-                std::cout << "\tstate: " << mylight.m_state << std::endl;
-                std::cout << "\tpower: " << mylight.m_power << std::endl;
-                std::cout << "\tname: " << mylight.m_name << std::endl;
+                std::cout << "\ttemperature: " << mydemo.m_temp << std::endl;
+                std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
+                std::cout << "\tname: " << mydemo.m_name << std::endl;
             }
 
             if (OBSERVE_TYPE_TO_USE == ObserveType::Observe)
@@ -178,24 +178,24 @@ void onPost(const HeaderOptions& /*headerOptions*/,
             }
             else
             {
-                rep.getValue("state", mylight.m_state);
-                rep.getValue("power", mylight.m_power);
-                rep.getValue("name", mylight.m_name);
+                rep.getValue("temperature", mydemo.m_temp);
+                rep.getValue("humidity", mydemo.m_humidity);
+                rep.getValue("name", mydemo.m_name);
 
-                std::cout << "\tstate: " << mylight.m_state << std::endl;
-                std::cout << "\tpower: " << mylight.m_power << std::endl;
-                std::cout << "\tname: " << mylight.m_name << std::endl;
+                std::cout << "\ttemperature: " << mydemo.m_temp << std::endl;
+                std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
+                std::cout << "\tname: " << mydemo.m_name << std::endl;
             }
 
             OCRepresentation rep2;
 
             std::cout << "Posting light representation..."<<std::endl;
 
-            mylight.m_state = true;
-            mylight.m_power = 55;
+            mydemo.m_temp = 1; 
+            mydemo.m_humidity = 2;
 
-            rep2.setValue("state", mylight.m_state);
-            rep2.setValue("power", mylight.m_power);
+            rep2.setValue("temperature", mydemo.m_temp);
+            rep2.setValue("humidity", mydemo.m_humidity);
 
             curResource->post(rep2, QueryParamsMap(), &onPost2);
         }
@@ -212,7 +212,7 @@ void onPost(const HeaderOptions& /*headerOptions*/,
 }
 
 // Local function to put a different state for this resource
-void postLightRepresentation(std::shared_ptr<OCResource> resource)
+void postDemoRepresentation(std::shared_ptr<OCResource> resource)
 {
     if(resource)
     {
@@ -220,11 +220,11 @@ void postLightRepresentation(std::shared_ptr<OCResource> resource)
 
         std::cout << "Posting light representation..."<<std::endl;
 
-        mylight.m_state = false;
-        mylight.m_power = 105;
+        mydemo.m_temp = 5;
+        mydemo.m_humidity = 6;
 
-        rep.setValue("state", mylight.m_state);
-        rep.setValue("power", mylight.m_power);
+        rep.setValue("temperature", mydemo.m_temp);
+        rep.setValue("humidity", mydemo.m_humidity);
 
         // Invoke resource's post API with rep, query map and the callback parameter
         resource->post(rep, QueryParamsMap(), &onPost);
@@ -240,15 +240,15 @@ void onPut(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, 
         {
             std::cout << "PUT request was successful" << std::endl;
 
-            rep.getValue("state", mylight.m_state);
-            rep.getValue("power", mylight.m_power);
-            rep.getValue("name", mylight.m_name);
+            rep.getValue("temperature", mydemo.m_temp);
+            rep.getValue("humidity", mydemo.m_humidity);
+            rep.getValue("name", mydemo.m_name);
 
-            std::cout << "\tstate: " << mylight.m_state << std::endl;
-            std::cout << "\tpower: " << mylight.m_power << std::endl;
-            std::cout << "\tname: " << mylight.m_name << std::endl;
+            std::cout << "\ttemperature: " << mydemo.m_humidity << std::endl;
+            std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
+            std::cout << "\tname: " << mydemo.m_name << std::endl;
 
-            postLightRepresentation(curResource);
+            postDemoRepresentation(curResource);
         }
         else
         {
@@ -263,7 +263,7 @@ void onPut(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, 
 }
 
 // Local function to put a different state for this resource
-void putLightRepresentation(std::shared_ptr<OCResource> resource)
+void putDemoRepresentation(std::shared_ptr<OCResource> resource)
 {
     if(resource)
     {
@@ -271,11 +271,11 @@ void putLightRepresentation(std::shared_ptr<OCResource> resource)
 
         std::cout << "Putting light representation..."<<std::endl;
 
-        mylight.m_state = true;
-        mylight.m_power = 15;
+        mydemo.m_temp = 10;
+        mydemo.m_humidity = 11;
 
-        rep.setValue("state", mylight.m_state);
-        rep.setValue("power", mylight.m_power);
+        rep.setValue("temperature", mydemo.m_temp);
+        rep.setValue("humidity", mydemo.m_humidity);
 
         // Invoke resource's put API with rep, query map and the callback parameter
         resource->put(rep, QueryParamsMap(), &onPut);
@@ -292,15 +292,15 @@ void onGet(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, 
             std::cout << "GET request was successful" << std::endl;
             std::cout << "Resource URI: " << rep.getUri() << std::endl;
 
-            rep.getValue("state", mylight.m_state);
-            rep.getValue("power", mylight.m_power);
-            rep.getValue("name", mylight.m_name);
+            rep.getValue("temperature", mydemo.m_temp);
+            rep.getValue("humidity", mydemo.m_humidity);
+            rep.getValue("name", mydemo.m_name);
 
-            std::cout << "\tstate: " << mylight.m_state << std::endl;
-            std::cout << "\tpower: " << mylight.m_power << std::endl;
-            std::cout << "\tname: " << mylight.m_name << std::endl;
+            std::cout << "\ttemperature: " << mydemo.m_temp << std::endl;
+            std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
+            std::cout << "\tname: " << mydemo.m_name << std::endl;
 
-            putLightRepresentation(curResource);
+            putDemoRepresentation(curResource);
         }
         else
         {
@@ -315,7 +315,7 @@ void onGet(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, 
 }
 
 // Local function to get representation of light resource
-void getLightRepresentation(std::shared_ptr<OCResource> resource)
+void getDemoRepresentation(std::shared_ptr<OCResource> resource)
 {
     if(resource)
     {
@@ -381,11 +381,11 @@ void foundResource(std::shared_ptr<OCResource> resource)
                 std::cout << "\t\t" << resourceInterfaces << std::endl;
             }
 
-            if(resourceURI == "/a/light")
+            if(resourceURI == "/demo/dht11")
             {
                 curResource = resource;
                 // Call a local function which will internally invoke get API on the resource pointer
-                getLightRepresentation(resource);
+                getDemoRepresentation(resource);
             }
         }
         else

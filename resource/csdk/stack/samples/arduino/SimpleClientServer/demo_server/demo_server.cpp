@@ -56,7 +56,7 @@ typedef struct DHT11RESOURCE{
     int data;
 } DHT11Resource;
 
-static DHT11Resource temp, humidity;
+static DHT11Resource temperature, humidity;
 
 #ifdef ARDUINOWIFI
 // Arduino WiFi Shield
@@ -166,14 +166,14 @@ OCEntityHandlerResult OCEntityHandlerCb(OCEntityHandlerFlag flag, OCEntityHandle
 
         if(OC_REST_GET == entityHandlerRequest->method)
         {
-            OCRepPayloadSetUri(payload, "/demo/temp");
+            OCRepPayloadSetUri(payload, "/dht11/temperature");
             OCRepPayloadSetPropBool(payload, "state", true);
             OCRepPayloadSetPropInt(payload, "power", 10);
         }
         else if(OC_REST_PUT == entityHandlerRequest->method)
         {
             //Do something with the 'put' payload
-            OCRepPayloadSetUri(payload, "/demo/temp");
+            OCRepPayloadSetUri(payload, "/dht11/temperature");
             OCRepPayloadSetPropBool(payload, "state", false);
             OCRepPayloadSetPropInt(payload, "power", 0);
         }
@@ -227,11 +227,11 @@ void *ChangeLightRepresentation (void *param)
     // Matching the timing that the Linux Sample Server App uses for the same functionality.
     if(modCounter % 10 == 0)
     {
-        temp.data += 5;
+        temperature.data += 5;
         if (gLightUnderObservation)
         {
-            OC_LOG_V(INFO, TAG, " =====> Notifying stack of new power level %d\n", temp.data);
-            result = OCNotifyAllObservers (temp.handle, OC_NA_QOS);
+            OC_LOG_V(INFO, TAG, " =====> Notifying stack of new power level %d\n", temperature.data);
+            result = OCNotifyAllObservers (temperature.handle, OC_NA_QOS);
             if (OC_STACK_NO_OBSERVERS == result)
             {
                 gLightUnderObservation = 0;
@@ -263,7 +263,7 @@ void setup()
         return;
     }
 
-    // Declare and create the example resource: temp 
+    // Declare and create the example resource: temperature 
     createDHT11Resource();
 }
 
@@ -288,21 +288,19 @@ void loop()
 
 void createDHT11Resource()
 {
-    temp.state = false;
-    OCStackResult res = OCCreateResource(&temp.handle,
-            "core.temp",
+    OCStackResult res = OCCreateResource(&temperature.handle,
+            "dht11.temperature",
             OC_RSRVD_INTERFACE_DEFAULT,
-            "/demo/temp",
+            "/dht11/temperature",
             OCEntityHandlerCb,
             NULL,
             OC_DISCOVERABLE|OC_OBSERVABLE);
     OC_LOG_V(INFO, TAG, "Created Temperature resource with result: %s", getResult(res));
 
-    humidity.state = false;
     res = OCCreateResource(&humidity.handle,
-            "core.humidity",
+            "dht11.humidity",
             OC_RSRVD_INTERFACE_DEFAULT,
-            "/demo/humidity",
+            "/dht11/humidity",
             OCEntityHandlerCb,
             NULL,
             OC_DISCOVERABLE|OC_OBSERVABLE);

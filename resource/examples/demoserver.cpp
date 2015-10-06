@@ -37,7 +37,7 @@ using namespace std;
 namespace PH = std::placeholders;
 
 int gObservation = 0;
-void * ChangeLightRepresentation (void *param);
+void * ChangeDemoRepresentation (void *param);
 void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequest);
 
 // Specifies where to notify all observers or list of observers
@@ -58,30 +58,30 @@ bool isSlowResponse = false;
 /// This class represents a single resource named 'lightResource'. This resource has
 /// two simple properties named 'state' and 'power'
 
-class LightResource
+class DemoResource
 {
 
 public:
     /// Access this property from a TB client
     std::string m_name;
-    bool m_state;
-    int m_power;
-    std::string m_lightUri;
+    int m_temp;
+    int m_humidity;
+    std::string m_demoUri;
     OCResourceHandle m_resourceHandle;
-    OCRepresentation m_lightRep;
+    OCRepresentation m_demoRep;
     ObservationIds m_interestedObservers;
 
 public:
     /// Constructor
-    LightResource()
-        :m_name("John's light"), m_state(false), m_power(0), m_lightUri("/a/light"),
+    DemoResource()
+        :m_name("Demo resource"), m_temp(0.0), m_humidity(0.0), m_demoUri("/demo/dht11"),
                 m_resourceHandle(nullptr) {
         // Initialize representation
-        m_lightRep.setUri(m_lightUri);
+        m_demoRep.setUri(m_demoUri);
 
-        m_lightRep.setValue("state", m_state);
-        m_lightRep.setValue("power", m_power);
-        m_lightRep.setValue("name", m_name);
+        m_demoRep.setValue("temperature", m_temp);
+        m_demoRep.setValue("humidity", m_humidity);
+        m_demoRep.setValue("name", m_name);
     }
 
     /* Note that this does not need to be a member function: for classes you do not have
@@ -91,9 +91,9 @@ public:
     void createResource()
     {
         //URI of the resource
-        std::string resourceURI = m_lightUri;
+        std::string resourceURI = m_demoUri;
         //resource type name. In this case, it is light
-        std::string resourceTypeName = "core.light";
+        std::string resourceTypeName = "demo.dht11";
         // resource interface.
         std::string resourceInterface = DEFAULT_INTERFACE;
 
@@ -107,7 +107,7 @@ public:
         {
             resourceProperty = OC_DISCOVERABLE | OC_OBSERVABLE;
         }
-        EntityHandler cb = std::bind(&LightResource::entityHandler, this,PH::_1);
+        EntityHandler cb = std::bind(&DemoResource::entityHandler, this,PH::_1);
 
         // This will internally create and register the resource.
         OCStackResult result = OCPlatform::registerResource(
@@ -139,7 +139,7 @@ public:
         {
             resourceProperty = OC_DISCOVERABLE | OC_OBSERVABLE;
         }
-        EntityHandler cb = std::bind(&LightResource::entityHandler, this,PH::_1);
+        EntityHandler cb = std::bind(&DemoResource::entityHandler, this,PH::_1);
 
         OCResourceHandle resHandle;
 
@@ -167,18 +167,18 @@ public:
     void put(OCRepresentation& rep)
     {
         try {
-            if (rep.getValue("state", m_state))
+            if (rep.getValue("temperature", m_temp))
             {
-                cout << "\t\t\t\t" << "state: " << m_state << endl;
+                cout << "\t\t\t\t" << "temperature: " << m_temp << endl;
             }
             else
             {
                 cout << "\t\t\t\t" << "state not found in the representation" << endl;
             }
 
-            if (rep.getValue("power", m_power))
+            if (rep.getValue("humidity", m_humidity))
             {
-                cout << "\t\t\t\t" << "power: " << m_power << endl;
+                cout << "\t\t\t\t" << "humidity: " << m_humidity << endl;
             }
             else
             {
@@ -225,10 +225,10 @@ public:
     // sending out.
     OCRepresentation get()
     {
-        m_lightRep.setValue("state", m_state);
-        m_lightRep.setValue("power", m_power);
+        m_demoRep.setValue("temperature", m_temp);
+        m_demoRep.setValue("humidity", m_humidity);
 
-        return m_lightRep;
+        return m_demoRep;
     }
 
     void addType(const std::string& type) const
@@ -381,7 +381,7 @@ OCEntityHandlerResult entityHandler(std::shared_ptr<OCResourceRequest> request)
             // If we have not created the thread already, we will create one here.
             if(!startedThread)
             {
-                pthread_create (&threadId, NULL, ChangeLightRepresentation, (void *)this);
+                pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
                 startedThread = 1;
             }
             ehResult = OC_EH_OK;
@@ -400,9 +400,9 @@ OCEntityHandlerResult entityHandler(std::shared_ptr<OCResourceRequest> request)
 // ChangeLightRepresentaion is an observation function,
 // which notifies any changes to the resource to stack
 // via notifyObservers
-void * ChangeLightRepresentation (void *param)
+void * ChangeDemoRepresentation (void *param)
 {
-    LightResource* lightPtr = (LightResource*) param;
+    DemoResource* demoPtr = (DemoResource*) param;
 
     // This function continuously monitors for the changes
     while (1)
@@ -415,10 +415,10 @@ void * ChangeLightRepresentation (void *param)
             // we call notifyObservors
             //
             // For demostration we are changing the power value and notifying.
-            lightPtr->m_power += 10;
+            demoPtr->m_humidity += 10;
 
-            cout << "\nPower updated to : " << lightPtr->m_power << endl;
-            cout << "Notifying observers with resource handle: " << lightPtr->getHandle() << endl;
+            cout << "\nHumidity updated to : " << demoPtr->m_humidity << endl;
+            cout << "Notifying observers with resource handle: " << demoPtr->getHandle() << endl;
 
             OCStackResult result = OC_STACK_OK;
 
@@ -428,15 +428,15 @@ void * ChangeLightRepresentation (void *param)
                             {std::make_shared<OCResourceResponse>()};
 
                 resourceResponse->setErrorCode(200);
-                resourceResponse->setResourceRepresentation(lightPtr->get(), DEFAULT_INTERFACE);
+                resourceResponse->setResourceRepresentation(demoPtr->get(), DEFAULT_INTERFACE);
 
-                result = OCPlatform::notifyListOfObservers(  lightPtr->getHandle(),
-                                                             lightPtr->m_interestedObservers,
+                result = OCPlatform::notifyListOfObservers(  demoPtr->getHandle(),
+                                                             demoPtr->m_interestedObservers,
                                                              resourceResponse);
             }
             else
             {
-                result = OCPlatform::notifyAllObservers(lightPtr->getHandle());
+                result = OCPlatform::notifyAllObservers(demoPtr->getHandle());
             }
 
             if(OC_STACK_NO_OBSERVERS == result)
@@ -453,7 +453,7 @@ void * ChangeLightRepresentation (void *param)
 void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequest)
 {
     // This function handles slow response case
-    LightResource* lightPtr = (LightResource*) param;
+    DemoResource* demoPtr = (DemoResource*) param;
     // Induce a case for slow response by using sleep
     std::cout << "SLOW response" << std::endl;
     sleep (10);
@@ -461,7 +461,7 @@ void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequ
     auto pResponse = std::make_shared<OC::OCResourceResponse>();
     pResponse->setRequestHandle(pRequest->getRequestHandle());
     pResponse->setResourceHandle(pRequest->getResourceHandle());
-    pResponse->setResourceRepresentation(lightPtr->get());
+    pResponse->setResourceRepresentation(demoPtr->get());
     pResponse->setErrorCode(200);
     pResponse->setResponseResult(OC_EH_OK);
 
@@ -541,14 +541,14 @@ int main(int argc, char* argv[])
     {
         // Create the instance of the resource class
         // (in this case instance of class 'LightResource').
-        LightResource myLight;
+        DemoResource myDemo;
 
         // Invoke createResource function of class light.
-        myLight.createResource();
+        myDemo.createResource();
         std::cout << "Created resource." << std::endl;
 
-        myLight.addType(std::string("core.brightlight"));
-        myLight.addInterface(std::string(LINK_INTERFACE));
+        myDemo.addType(std::string("demo.dht11"));
+        myDemo.addInterface(std::string(LINK_INTERFACE));
         std::cout << "Added Interface and Type" << std::endl;
 
 
