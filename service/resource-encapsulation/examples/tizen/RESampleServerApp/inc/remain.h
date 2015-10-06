@@ -45,6 +45,4 @@ using namespace OC;
 
 void serverCreateUI(void *data, Evas_Object *obj, void *event_info);
 
-void containerCreateUI(void *data, Evas_Object *obj, void *event_info);
-
 #endif // REMAIN_H__

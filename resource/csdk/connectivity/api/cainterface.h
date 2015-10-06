@@ -111,6 +111,13 @@ void CATerminate();
 CAResult_t CAStartListeningServer();
 
 /**
+ * Stops the server from receiving the multicast traffic. This is used by sleeping
+ * device to not receives the multicast traffic.
+ * @return  ::CA_STATUS_OK or ::CA_STATUS_FAILED
+ */
+CAResult_t CAStopListeningServer();
+
+/**
  * Starts discovery servers.
  * This API is used by resource required clients for listening multicast requests.
  * Based on the adapters configurations, different kinds of servers are started.
@@ -187,16 +194,6 @@ CAResult_t CASendRequest(const CAEndpoint_t *object, const CARequestInfo_t *requ
  * @return  ::CA_STATUS_OK or  ::CA_STATUS_FAILED or ::CA_MEMORY_ALLOC_FAILED
  */
 CAResult_t CASendResponse(const CAEndpoint_t *object, const CAResponseInfo_t *responseInfo);
-
-/**
- * Send notification to the remote object.
- * @param[in]   object           Endpoint where the payload need to be sent.
- *                               This endpoint is delivered with Request or response callback.
- * @param[in]   responseInfo     Information for the response.
- * @return  ::CA_STATUS_OK or ::CA_STATUS_FAILED or ::CA_MEMORY_ALLOC_FAILED
- */
-CAResult_t CASendNotification(const CAEndpoint_t *object,
-                      const  CAResponseInfo_t *responseInfo);
 
 /**
  * Select network to use.
