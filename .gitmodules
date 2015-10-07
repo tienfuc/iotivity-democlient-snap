@@ -1,0 +1,3 @@
+[submodule "extlibs/GrovePi"]
+	path = extlibs/GrovePi
+	url = https://github.com/DexterInd/GrovePi.git
