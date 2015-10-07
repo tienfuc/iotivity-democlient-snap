@@ -1,0 +1,3 @@
+[submodule "extlibs/GrovePi"]
+	path = extlibs/GrovePi
+	url = git+ssh://gerald-yang-tw@git.launchpad.net/~fukuoka-team/fukuoka/+git/GrovePi
