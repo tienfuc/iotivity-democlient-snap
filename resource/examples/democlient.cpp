@@ -46,14 +46,15 @@ public:
 	double sensor_temp;
 	double sensor_humidity;
 	int sensor_light;
-	bool led_red;
-	bool led_green;
-	bool led_blue;
+	int led_red;
+	int led_green;
+	int led_blue;
 
 	std::string m_name;
 
 	Demo() : sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), 
-		led_red(false), m_name("")
+		led_red(0), led_green(0), led_blue(0),      
+		m_name("")
 	{
 	}
 };

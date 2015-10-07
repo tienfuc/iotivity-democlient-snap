@@ -49,9 +49,9 @@ public:
 	OCResourceHandle sensor_resourceHandle;
 	OCRepresentation sensor_rep;
 
-	bool led_red;
-	bool led_green;
-	bool led_blue;
+	int led_red;
+	int led_green;
+	int led_blue;
 	OCResourceHandle led_resourceHandle;
 	OCRepresentation led_rep;
 
@@ -63,7 +63,7 @@ public:
 	DemoResource()
 		:demo_name("Demo resource"), 
 		sensor_name("Grovepi sensor"), sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0),
-		led_red(false), led_green(false), led_blue(false),
+		led_red(0), led_green(0), led_blue(0),
 		sensor_resourceHandle(nullptr), led_resourceHandle(nullptr) 
 	{
 		// Initialize representation
@@ -133,7 +133,7 @@ public:
 #endif
 	}
 
-	PyObject* call_py_func(char *func_name)
+	PyObject* call_py_func(char *func_name, PyObject *value)
 	{
 		PyObject *p_filename, *p_module, *p_dict, *p_func, *p_result = NULL;
 
@@ -150,7 +150,7 @@ public:
 		if(PyCallable_Check(p_func))
 		{
 			std::cout << "Access grovepi library" << std::endl;
-			p_result = PyObject_CallObject(p_func, NULL);
+			p_result = PyObject_CallObject(p_func, value);
 			PyErr_Print();
 		}
 		else
@@ -172,7 +172,7 @@ public:
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("sensor_read_temp");
+		p_result = call_py_func("sensor_read_temp", NULL);
 
 		if(p_result)
 		{
@@ -189,7 +189,7 @@ public:
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("sensor_read_humidity");
+		p_result = call_py_func("sensor_read_humidity", NULL);
 
 		if(p_result)
 		{
@@ -206,7 +206,7 @@ public:
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("sensor_read_light");
+		p_result = call_py_func("sensor_read_light", NULL);
 
 		if(p_result)
 		{
@@ -219,6 +219,110 @@ public:
 		}
 	}
 
+	int led_read_red()
+	{
+		PyObject *p_result;
+
+		p_result = call_py_func("led_read_red", NULL);
+
+		if(p_result)
+		{
+			//std::cout << PyInt_AsLong(p_result) << std::endl;
+			return PyInt_AsLong(p_result);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	int led_write_red(int status)
+	{
+		PyObject *p_result, *p_value;
+
+		p_value = Py_BuildValue("(i)", status);
+
+		p_result = call_py_func("led_write_red", p_value);
+
+		if(p_result)
+		{
+			return 0;
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	int led_read_green()
+	{
+		PyObject *p_result;
+
+		p_result = call_py_func("led_read_green", NULL);
+
+		if(p_result)
+		{
+			//std::cout << PyInt_AsLong(p_result) << std::endl;
+			return PyInt_AsLong(p_result);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	int led_write_green(int status)
+	{
+		PyObject *p_result, *p_value;
+
+		p_value = Py_BuildValue("(i)", status);
+
+		p_result = call_py_func("led_write_green", p_value);
+
+		if(p_result)
+		{
+			return 0;
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	int led_read_blue()
+	{
+		PyObject *p_result;
+
+		p_result = call_py_func("led_read_blue", NULL);
+
+		if(p_result)
+		{
+			//std::cout << PyInt_AsLong(p_result) << std::endl;
+			return PyInt_AsLong(p_result);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+
+	int led_write_blue(int status)
+	{
+		PyObject *p_result, *p_value;
+
+		p_value = Py_BuildValue("(i)", status);
+
+		p_result = call_py_func("led_write_blue", p_value);
+
+		if(p_result)
+		{
+			return 0;
+		}
+		else
+		{
+			return -1;
+		}
+	}
 
 	OCResourceHandle getHandle()
 	{
@@ -264,376 +368,332 @@ public:
 		}
 	}
 
-    // Post representation.
-    // Post can create new resource or simply act like put.
-    // Gets values from the representation and
-    // updates the internal state
-    OCRepresentation post(OCRepresentation& rep)
-    {
+	// Post representation.
+	// Post can create new resource or simply act like put.
+	// Gets values from the representation and
+	// updates the internal state
+	OCRepresentation post(OCRepresentation& rep)
+	{
 #if 0
-        static int first = 1;
+		static int first = 1;
 
-        // for the first time it tries to create a resource
-        if(first)
-        {
-            first = 0;
+		// for the first time it tries to create a resource
+		if(first)
+		{
+			first = 0;
 
-            if(OC_STACK_OK == createResource1())
-            {
-                OCRepresentation rep1;
-                rep1.setValue("createduri", std::string("/a/light1"));
+			if(OC_STACK_OK == createResource1())
+			{
+				OCRepresentation rep1;
+				rep1.setValue("createduri", std::string("/a/light1"));
 
-                return rep1;
-            }
-        }
+				return rep1;
+			}
+		}
 
-        // from second time onwards it just puts
-        put(rep);
+		// from second time onwards it just puts
+		put(rep);
 #endif
-        return get();
-    }
+		return get();
+	}
 
 
-    // gets the updated representation.
-    // Updates the representation with latest internal state before
-    // sending out.
-    OCRepresentation get()
-    {
-	sensor_temp = sensor_read_temp();
-	sensor_humidity = sensor_read_humidity();
-	sensor_light = sensor_read_light();
+	// gets the updated representation.
+	OCRepresentation get()
+	{
+		sensor_temp = sensor_read_temp();
+		sensor_humidity = sensor_read_humidity();
+		sensor_light = sensor_read_light();
 
-        sensor_rep.setValue("temperature", sensor_temp);
-        sensor_rep.setValue("humidity", sensor_humidity);
-        sensor_rep.setValue("light", sensor_light);
-        return sensor_rep;
-    }
+		sensor_rep.setValue("temperature", sensor_temp);
+		sensor_rep.setValue("humidity", sensor_humidity);
+		sensor_rep.setValue("light", sensor_light);
+		return sensor_rep;
+	}
 
-    void addType(const std::string& type) const
-    {
-        OCStackResult result = OCPlatform::bindTypeToResource(sensor_resourceHandle, type);
-        if (OC_STACK_OK != result)
-        {
-            cout << "Binding TypeName to Resource was unsuccessful\n";
-        }
-    }
+	void addType(const std::string& type) const
+	{
+		OCStackResult result = OCPlatform::bindTypeToResource(sensor_resourceHandle, type);
+		if (OC_STACK_OK != result)
+		{
+			cout << "Binding TypeName to Resource was unsuccessful\n";
+		}
+	}
 
-    void addInterface(const std::string& interface) const
-    {
-        OCStackResult result = OCPlatform::bindInterfaceToResource(sensor_resourceHandle, interface);
-        if (OC_STACK_OK != result)
-        {
-            cout << "Binding TypeName to Resource was unsuccessful\n";
-        }
-    }
+	void addInterface(const std::string& interface) const
+	{
+		OCStackResult result = OCPlatform::bindInterfaceToResource(sensor_resourceHandle, interface);
+		if (OC_STACK_OK != result)
+		{
+			cout << "Binding TypeName to Resource was unsuccessful\n";
+		}
+	}
 
 private:
 // This is just a sample implementation of entity handler.
 // Entity handler can be implemented in several ways by the manufacturer
 OCEntityHandlerResult sensor_entityHandler(std::shared_ptr<OCResourceRequest> request)
 {
-    cout << "\tIn Server sensor entity handler:\n";
-    OCEntityHandlerResult ehResult = OC_EH_ERROR;
-    if(request)
-    {
-        // Get the request type and request flag
-        std::string requestType = request->getRequestType();
-        int requestFlag = request->getRequestHandlerFlag();
+	cout << "\tIn Server sensor entity handler:\n";
+	OCEntityHandlerResult ehResult = OC_EH_ERROR;
+	if(request)
+	{
+		// Get the request type and request flag
+		std::string requestType = request->getRequestType();
+		int requestFlag = request->getRequestHandlerFlag();
 
-        if(requestFlag & RequestHandlerFlag::RequestFlag)
-        {
-            cout << "\t\trequestFlag : Request\n";
-            auto pResponse = std::make_shared<OC::OCResourceResponse>();
-            pResponse->setRequestHandle(request->getRequestHandle());
-            pResponse->setResourceHandle(request->getResourceHandle());
+		if(requestFlag & RequestHandlerFlag::RequestFlag)
+		{
+			cout << "\t\trequestFlag : Request\n";
+			auto pResponse = std::make_shared<OC::OCResourceResponse>();
+			pResponse->setRequestHandle(request->getRequestHandle());
+			pResponse->setResourceHandle(request->getResourceHandle());
 
-            // Check for query params (if any)
-            QueryParamsMap queries = request->getQueryParameters();
+			// Check for query params (if any)
+			QueryParamsMap queries = request->getQueryParameters();
 
-            if (!queries.empty())
-            {
-                std::cout << "\nQuery processing upto entityHandler" << std::endl;
-            }
-            for (auto it : queries)
-            {
-                std::cout << "Query key: " << it.first << " value : " << it.second
-                        << std:: endl;
-            }
+			if (!queries.empty())
+			{
+				std::cout << "\nQuery processing upto entityHandler" << std::endl;
+			}
+			for (auto it : queries)
+			{
+				std::cout << "Query key: " << it.first << " value : " << it.second << std:: endl;
+			}
 
-            // If the request type is GET
-            if(requestType == "GET")
-            {
-                cout << "\t\t\trequestType : GET\n";
+			if(requestType == "GET")
+			{
+				cout << "\t\t\trequestType : GET\n";
+				pResponse->setErrorCode(200);
+				pResponse->setResponseResult(OC_EH_OK);
+				pResponse->setResourceRepresentation(get());
+				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+				{
+					ehResult = OC_EH_OK;
+				}
+			}
+			else if(requestType == "PUT")
+			{
+				cout << "\t\t\trequestType : PUT\n";
+				OCRepresentation rep = request->getResourceRepresentation();
+
+				// Do related operations related to PUT request
+				// Update the lightResource
+				put(rep);
+				pResponse->setErrorCode(200);
+				pResponse->setResponseResult(OC_EH_OK);
+				pResponse->setResourceRepresentation(get());
+				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+				{
+					ehResult = OC_EH_OK;
+				}
+			}
+			else if(requestType == "POST")
+			{
+				cout << "\t\t\trequestType : POST\n";
 #if 0
-                if(isSlowResponse) // Slow response case
-                {
-                    static int startedThread = 0;
-                    if(!startedThread)
-                    {
-                        std::thread t(handleSlowResponse, (void *)this, request);
-                        startedThread = 1;
-                        t.detach();
-                    }
-                    ehResult = OC_EH_SLOW;
-                }
-                else // normal response case.
-#endif
-                {
-                    pResponse->setErrorCode(200);
-                    pResponse->setResponseResult(OC_EH_OK);
-                    pResponse->setResourceRepresentation(get());
-                    if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-                    {
-                        ehResult = OC_EH_OK;
-                    }
-                }
-            }
-            else if(requestType == "PUT")
-            {
-                cout << "\t\t\trequestType : PUT\n";
-                OCRepresentation rep = request->getResourceRepresentation();
+				OCRepresentation rep = request->getResourceRepresentation();
 
-                // Do related operations related to PUT request
-                // Update the lightResource
-                put(rep);
-                pResponse->setErrorCode(200);
-                pResponse->setResponseResult(OC_EH_OK);
-                pResponse->setResourceRepresentation(get());
-                if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-                {
-                    ehResult = OC_EH_OK;
-                }
-            }
-            else if(requestType == "POST")
-            {
-                cout << "\t\t\trequestType : POST\n";
+				// Do related operations related to POST request
+				OCRepresentation rep_post = post(rep);
+				pResponse->setResourceRepresentation(rep_post);
+				pResponse->setErrorCode(200);
+				if(rep_post.hasAttribute("createduri"))
+				{
+					pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
+					pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
+				}
+				else
+				{
+					pResponse->setResponseResult(OC_EH_OK);
+				}
+
+				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+				{
+					ehResult = OC_EH_OK;
+				}
+#endif
+			}
+			else if(requestType == "DELETE")
+			{
+				cout << "Delete request received" << endl;
+			}
+		}
+
+		if(requestFlag & RequestHandlerFlag::ObserverFlag)
+		{
+			ObservationInfo observationInfo = request->getObservationInfo();
+			if(ObserveAction::ObserveRegister == observationInfo.action)
+			{
+				m_interestedObservers.push_back(observationInfo.obsId);
+			}
+			else if(ObserveAction::ObserveUnregister == observationInfo.action)
+			{
+				m_interestedObservers.erase(std::remove(
+						m_interestedObservers.begin(),
+						m_interestedObservers.end(),
+						observationInfo.obsId),
+						m_interestedObservers.end());
+			}
+
+			pthread_t threadId;
+
+			cout << "\t\trequestFlag : Observer\n";
 #if 0
-                OCRepresentation rep = request->getResourceRepresentation();
+			gObservation = 1;
+			static int startedThread = 0;
 
-                // Do related operations related to POST request
-                OCRepresentation rep_post = post(rep);
-                pResponse->setResourceRepresentation(rep_post);
-                pResponse->setErrorCode(200);
-                if(rep_post.hasAttribute("createduri"))
-                {
-                    pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
-                    pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
-                }
-                else
-                {
-                    pResponse->setResponseResult(OC_EH_OK);
-                }
-
-                if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-                {
-                    ehResult = OC_EH_OK;
-                }
+			// Observation happens on a different thread in ChangeLightRepresentation function.
+			// If we have not created the thread already, we will create one here.
+			if(!startedThread)
+			{
+				pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
+				startedThread = 1;
+			}
 #endif
-            }
-            else if(requestType == "DELETE")
-            {
-                cout << "Delete request received" << endl;
-            }
-        }
+			ehResult = OC_EH_OK;
+		}
+	}
+	else
+	{
+		std::cout << "Request invalid" << std::endl;
+	}
 
-        if(requestFlag & RequestHandlerFlag::ObserverFlag)
-        {
-            ObservationInfo observationInfo = request->getObservationInfo();
-            if(ObserveAction::ObserveRegister == observationInfo.action)
-            {
-                m_interestedObservers.push_back(observationInfo.obsId);
-            }
-            else if(ObserveAction::ObserveUnregister == observationInfo.action)
-            {
-                m_interestedObservers.erase(std::remove(
-                                                            m_interestedObservers.begin(),
-                                                            m_interestedObservers.end(),
-                                                            observationInfo.obsId),
-                                                            m_interestedObservers.end());
-            }
-
-            pthread_t threadId;
-
-            cout << "\t\trequestFlag : Observer\n";
-#if 0
-            gObservation = 1;
-            static int startedThread = 0;
-
-            // Observation happens on a different thread in ChangeLightRepresentation function.
-            // If we have not created the thread already, we will create one here.
-            if(!startedThread)
-            {
-                pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
-                startedThread = 1;
-            }
-#endif
-            ehResult = OC_EH_OK;
-        }
-    }
-    else
-    {
-        std::cout << "Request invalid" << std::endl;
-    }
-
-    return ehResult;
+	return ehResult;
 }
 
 OCEntityHandlerResult led_entityHandler(std::shared_ptr<OCResourceRequest> request)
 {
-    cout << "\tIn Server CPP entity handler:\n";
-    OCEntityHandlerResult ehResult = OC_EH_ERROR;
-    if(request)
-    {
-        // Get the request type and request flag
-        std::string requestType = request->getRequestType();
-        int requestFlag = request->getRequestHandlerFlag();
+	cout << "\tIn Server CPP entity handler:\n";
+	OCEntityHandlerResult ehResult = OC_EH_ERROR;
+	if(request)
+	{
+		// Get the request type and request flag
+		std::string requestType = request->getRequestType();
+		int requestFlag = request->getRequestHandlerFlag();
 
-        if(requestFlag & RequestHandlerFlag::RequestFlag)
-        {
-            cout << "\t\trequestFlag : Request\n";
-            auto pResponse = std::make_shared<OC::OCResourceResponse>();
-            pResponse->setRequestHandle(request->getRequestHandle());
-            pResponse->setResourceHandle(request->getResourceHandle());
+		if(requestFlag & RequestHandlerFlag::RequestFlag)
+		{
+			cout << "\t\trequestFlag : Request\n";
+			auto pResponse = std::make_shared<OC::OCResourceResponse>();
+			pResponse->setRequestHandle(request->getRequestHandle());
+			pResponse->setResourceHandle(request->getResourceHandle());
 
-            // Check for query params (if any)
-            QueryParamsMap queries = request->getQueryParameters();
+			// Check for query params (if any)
+			QueryParamsMap queries = request->getQueryParameters();
 
-            if (!queries.empty())
-            {
-                std::cout << "\nQuery processing upto entityHandler" << std::endl;
-            }
-            for (auto it : queries)
-            {
-                std::cout << "Query key: " << it.first << " value : " << it.second
-                        << std:: endl;
-            }
+			if (!queries.empty())
+			{
+				std::cout << "\nQuery processing upto entityHandler" << std::endl;
+			}
+			for (auto it : queries)
+			{
+				std::cout << "Query key: " << it.first << " value : " << it.second << std:: endl;
+			}
 
-            // If the request type is GET
-            if(requestType == "GET")
-            {
-                cout << "\t\t\trequestType : GET\n";
+			if(requestType == "GET")
+			{
+				cout << "\t\t\trequestType : GET\n";
+				pResponse->setErrorCode(200);
+				pResponse->setResponseResult(OC_EH_OK);
+				pResponse->setResourceRepresentation(get());
+				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+				{
+					ehResult = OC_EH_OK;
+				}
+			}
+			else if(requestType == "PUT")
+			{
+				cout << "\t\t\trequestType : PUT\n";
 #if 0
-                if(isSlowResponse) // Slow response case
-                {
-                    static int startedThread = 0;
-                    if(!startedThread)
-                    {
-                        std::thread t(handleSlowResponse, (void *)this, request);
-                        startedThread = 1;
-                        t.detach();
-                    }
-                    ehResult = OC_EH_SLOW;
-                }
-                else // normal response case.
-                {
-                    pResponse->setErrorCode(200);
-                    pResponse->setResponseResult(OC_EH_OK);
-                    pResponse->setResourceRepresentation(get());
-                    if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-                    {
-                        ehResult = OC_EH_OK;
-                    }
-                }
+				OCRepresentation rep = request->getResourceRepresentation();
+
+				// Do related operations related to PUT request
+				// Update the lightResource
+				put(rep);
+				pResponse->setErrorCode(200);
+				pResponse->setResponseResult(OC_EH_OK);
+				pResponse->setResourceRepresentation(get());
+				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+				{
+					ehResult = OC_EH_OK;
+				}
 #endif
-            }
-            else if(requestType == "PUT")
-            {
-                cout << "\t\t\trequestType : PUT\n";
+			}
+			else if(requestType == "POST")
+			{
+				cout << "\t\t\trequestType : POST\n";
 #if 0
-                OCRepresentation rep = request->getResourceRepresentation();
+				OCRepresentation rep = request->getResourceRepresentation();
 
-                // Do related operations related to PUT request
-                // Update the lightResource
-                put(rep);
-                pResponse->setErrorCode(200);
-                pResponse->setResponseResult(OC_EH_OK);
-                pResponse->setResourceRepresentation(get());
-                if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-                {
-                    ehResult = OC_EH_OK;
-                }
+				// Do related operations related to POST request
+				OCRepresentation rep_post = post(rep);
+				pResponse->setResourceRepresentation(rep_post);
+				pResponse->setErrorCode(200);
+				if(rep_post.hasAttribute("createduri"))
+				{
+					pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
+					pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
+				}
+				else
+				{
+					pResponse->setResponseResult(OC_EH_OK);
+				}
+
+				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+				{
+					ehResult = OC_EH_OK;
+				}
 #endif
-            }
-            else if(requestType == "POST")
-            {
-                cout << "\t\t\trequestType : POST\n";
+			}
+			else if(requestType == "DELETE")
+			{
+				cout << "Delete request received" << endl;
+			}
+		}
+
+		if(requestFlag & RequestHandlerFlag::ObserverFlag)
+		{
+			ObservationInfo observationInfo = request->getObservationInfo();
+			if(ObserveAction::ObserveRegister == observationInfo.action)
+			{
+				m_interestedObservers.push_back(observationInfo.obsId);
+			}
+			else if(ObserveAction::ObserveUnregister == observationInfo.action)
+			{
+				m_interestedObservers.erase(std::remove(
+						m_interestedObservers.begin(),
+						m_interestedObservers.end(),
+						observationInfo.obsId),
+						m_interestedObservers.end());
+			}
+
+			pthread_t threadId;
+
+			cout << "\t\trequestFlag : Observer\n";
 #if 0
-                OCRepresentation rep = request->getResourceRepresentation();
+			gObservation = 1;
+			static int startedThread = 0;
 
-                // Do related operations related to POST request
-                OCRepresentation rep_post = post(rep);
-                pResponse->setResourceRepresentation(rep_post);
-                pResponse->setErrorCode(200);
-                if(rep_post.hasAttribute("createduri"))
-                {
-                    pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
-                    pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
-                }
-                else
-                {
-                    pResponse->setResponseResult(OC_EH_OK);
-                }
-
-                if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-                {
-                    ehResult = OC_EH_OK;
-                }
+			// Observation happens on a different thread in ChangeLightRepresentation function.
+			// If we have not created the thread already, we will create one here.
+			if(!startedThread)
+			{
+				pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
+				startedThread = 1;
+			}
 #endif
-            }
-            else if(requestType == "DELETE")
-            {
-                cout << "Delete request received" << endl;
-            }
-        }
+			ehResult = OC_EH_OK;
+		}
+	}
+	else
+	{
+		std::cout << "Request invalid" << std::endl;
+	}
 
-        if(requestFlag & RequestHandlerFlag::ObserverFlag)
-        {
-            ObservationInfo observationInfo = request->getObservationInfo();
-            if(ObserveAction::ObserveRegister == observationInfo.action)
-            {
-                m_interestedObservers.push_back(observationInfo.obsId);
-            }
-            else if(ObserveAction::ObserveUnregister == observationInfo.action)
-            {
-                m_interestedObservers.erase(std::remove(
-                                                            m_interestedObservers.begin(),
-                                                            m_interestedObservers.end(),
-                                                            observationInfo.obsId),
-                                                            m_interestedObservers.end());
-            }
-
-            pthread_t threadId;
-
-            cout << "\t\trequestFlag : Observer\n";
-#if 0
-            gObservation = 1;
-            static int startedThread = 0;
-
-            // Observation happens on a different thread in ChangeLightRepresentation function.
-            // If we have not created the thread already, we will create one here.
-            if(!startedThread)
-            {
-                pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
-                startedThread = 1;
-            }
-#endif
-            ehResult = OC_EH_OK;
-        }
-    }
-    else
-    {
-        std::cout << "Request invalid" << std::endl;
-    }
-
-    return ehResult;
+	return ehResult;
 }
 
-};
-
-
-class PyGrovepi
-{
-	public:
 };
 
 
@@ -715,102 +775,101 @@ void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequ
 
 void PrintUsage()
 {
-    std::cout << std::endl;
-    std::cout << "Usage : simpleserver <value>\n";
-    std::cout << "    Default - Non-secure resource and notify all observers\n";
-    std::cout << "    1 - Non-secure resource and notify list of observers\n\n";
-    std::cout << "    2 - Secure resource and notify all observers\n";
-    std::cout << "    3 - Secure resource and notify list of observers\n\n";
-    std::cout << "    4 - Non-secure resource, GET slow response, notify all observers\n";
+	std::cout << std::endl;
+	std::cout << "Usage : simpleserver <value>\n";
+	std::cout << "    Default - Non-secure resource and notify all observers\n";
+	std::cout << "    1 - Non-secure resource and notify list of observers\n\n";
+	std::cout << "    2 - Secure resource and notify all observers\n";
+	std::cout << "    3 - Secure resource and notify list of observers\n\n";
+	std::cout << "    4 - Non-secure resource, GET slow response, notify all observers\n";
 }
 
 static FILE* client_open(const char* /*path*/, const char *mode)
 {
-    return fopen("./oic_svr_db_server.json", mode);
+	return fopen("./oic_svr_db_server.json", mode);
 }
 
 int main(int argc, char* argv[])
 {
-    PrintUsage();
-    OCPersistentStorage ps {client_open, fread, fwrite, fclose, unlink };
+	//PrintUsage();
+	OCPersistentStorage ps {client_open, fread, fwrite, fclose, unlink };
 
-    if (argc == 1)
-    {
-        isListOfObservers = false;
-        isSecure = false;
-    }
-    else if (argc == 2)
-    {
-        int value = atoi(argv[1]);
-        switch (value)
-        {
-            case 1:
-                isListOfObservers = true;
-                isSecure = false;
-                break;
-            case 2:
-                isListOfObservers = false;
-                isSecure = true;
-                break;
-            case 3:
-                isListOfObservers = true;
-                isSecure = true;
-                break;
-            case 4:
-                isSlowResponse = true;
-                break;
-            default:
-                break;
-       }
-     }
-    else
-    {
-        return -1;
-    }
+	if (argc == 1)
+	{
+		isListOfObservers = false;
+		isSecure = false;
+	}
+	else if (argc == 2)
+	{
+		int value = atoi(argv[1]);
+		switch (value)
+		{
+			case 1:
+				isListOfObservers = true;
+				isSecure = false;
+				break;
+			case 2:
+				isListOfObservers = false;
+				isSecure = true;
+				break;
+			case 3:
+				isListOfObservers = true;
+				isSecure = true;
+				break;
+			case 4:
+				isSlowResponse = true;
+				break;
+			default:
+				break;
+		}
+	}
+	else
+	{
+		return -1;
+	}
 
-    // Create PlatformConfig object
-    PlatformConfig cfg {
-        OC::ServiceType::InProc,
-        OC::ModeType::Server,
-        "0.0.0.0", // By setting to "0.0.0.0", it binds to all available interfaces
-        0,         // Uses randomly available port
-        OC::QualityOfService::LowQos,
-        &ps
-    };
+	// Create PlatformConfig object
+	PlatformConfig cfg {
+		OC::ServiceType::InProc,
+		OC::ModeType::Server,
+		"0.0.0.0", // By setting to "0.0.0.0", it binds to all available interfaces
+		0,         // Uses randomly available port
+		OC::QualityOfService::LowQos,
+		&ps
+	};
 
-    OCPlatform::Configure(cfg);
-    try
-    {
-        // Create the instance of the resource class
-        // (in this case instance of class 'LightResource').
-        DemoResource myDemo;
+	OCPlatform::Configure(cfg);
+	try
+	{
+		// Create the instance of the resource class
+		DemoResource myDemo;
 
-        // Invoke createResource function of class light.
-        myDemo.createResource();
-        std::cout << "Created resource." << std::endl;
+		// Invoke createResource function of class light.
+		myDemo.createResource();
+		std::cout << "Created resource." << std::endl;
 
-	//myDemo.addType(std::string("demo.grovepi"));
-        //myDemo.addInterface(std::string(LINK_INTERFACE));
-        //std::cout << "Added Interface and Type" << std::endl;
+		//myDemo.addType(std::string("demo.grovepi"));
+		//myDemo.addInterface(std::string(LINK_INTERFACE));
+		//std::cout << "Added Interface and Type" << std::endl;
 
 
-        // A condition variable will free the mutex it is given, then do a non-
-        // intensive block until 'notify' is called on it.  In this case, since we
-        // don't ever call cv.notify, this should be a non-processor intensive version
-        // of while(true);
-        std::mutex blocker;
-        std::condition_variable cv;
-        std::unique_lock<std::mutex> lock(blocker);
-        std::cout <<"Waiting" << std::endl;
-        cv.wait(lock, []{return false;});
-    }
-    catch(OCException &e)
-    {
-        std::cout << "OCException in main : " << e.what() << endl;
-    }
+		// A condition variable will free the mutex it is given, then do a non-
+		// intensive block until 'notify' is called on it.  In this case, since we
+		// don't ever call cv.notify, this should be a non-processor intensive version
+		// of while(true);
+		std::mutex blocker;
+		std::condition_variable cv;
+		std::unique_lock<std::mutex> lock(blocker);
+		std::cout <<"Waiting" << std::endl;
+		cv.wait(lock, []{return false;});
+	}
+	catch(OCException &e)
+	{
+		std::cout << "OCException in main : " << e.what() << endl;
+	}
 
-    // No explicit call to stop the platform.
-    // When OCPlatform::destructor is invoked, internally we do platform cleanup
+	// No explicit call to stop the platform.
+	// When OCPlatform::destructor is invoked, internally we do platform cleanup
 
-    return 0;
+	return 0;
 }
