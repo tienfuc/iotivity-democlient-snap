@@ -254,7 +254,7 @@ void onPut(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, 
     {
         if(eCode == OC_STACK_OK)
         {
-            std::cout << "PUT request was successful" << std::endl;
+            std::cout << "Sensor PUT request was successful" << std::endl;
 
             rep.getValue("temperature", mydemo.sensor_temp);
             rep.getValue("humidity", mydemo.sensor_humidity);
@@ -264,11 +264,39 @@ void onPut(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, 
             std::cout << "\thumidity: " << mydemo.sensor_humidity << std::endl;
             std::cout << "\tlight: " << mydemo.sensor_light << std::endl;
 
-            postDemoRepresentation(sensorResource);
+            //postDemoRepresentation(sensorResource);
         }
         else
         {
             std::cout << "onPut Response error: " << eCode << std::endl;
+            std::exit(-1);
+        }
+    }
+    catch(std::exception& e)
+    {
+        std::cout << "Exception: " << e.what() << " in onPut" << std::endl;
+    }
+}
+
+void onPutLed(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, const int eCode)
+{
+    try
+    {
+        if(eCode == OC_STACK_OK)
+        {
+            std::cout << "Led PUT request was successful" << std::endl;
+
+            rep.getValue("red", mydemo.led_red);
+            rep.getValue("green", mydemo.led_green);
+            rep.getValue("blue", mydemo.led_blue);
+
+            std::cout << "\tRed LED: " << mydemo.led_red << std::endl;
+            std::cout << "\tGreen LED: " << mydemo.led_green << std::endl;
+            std::cout << "\tBlue LED: " << mydemo.led_blue << std::endl;
+        }
+        else
+        {
+            std::cout << "onPutLed Response error: " << eCode << std::endl;
             std::exit(-1);
         }
     }
@@ -308,17 +336,24 @@ void putLedRepresentation(std::shared_ptr<OCResource> resource)
 
         std::cout << "Putting LED representation..."<<std::endl;
 
-        mydemo.led_red = true;
-        mydemo.led_green = true;
-        mydemo.led_blue = true;
+        mydemo.led_red = 1;
+        mydemo.led_green = 1;
+        mydemo.led_blue = 1;
 
         rep.setValue("red", mydemo.led_red);
         rep.setValue("green", mydemo.led_green);
         rep.setValue("blue", mydemo.led_blue);
 
         // Invoke resource's put API with rep, query map and the callback parameter
-        resource->put(rep, QueryParamsMap(), &onPut);
+        resource->put(rep, QueryParamsMap(), &onPutLed);
     }
+}
+
+void sensor_write_db()
+{
+	std::ostringstream db_cmd;
+	db_cmd << "curl -i -XPOST 'http://10.101.46.34:8086/write?db=fukuoka' --data-binary 'temperature,sensor=1 value=" << mydemo.sensor_temp << "'";
+	std::cout << db_cmd << std::endl;
 }
 
 // Callback handler on GET request
@@ -341,6 +376,7 @@ void onGetSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
             std::cout << "\tlight: " << mydemo.sensor_light << std::endl;
             std::cout << "\tname: " << mydemo.m_name << std::endl;
 
+	    sensor_write_db();
             //putSensorRepresentation(sensorResource);
         }
         else
@@ -405,11 +441,11 @@ void getLedRepresentation(std::shared_ptr<OCResource> resource)
 {
     if(resource)
     {
-        std::cout << "Getting Representation..."<<std::endl;
+        std::cout << "Getting LED Representation..."<<std::endl;
         // Invoke resource's get API with the callback parameter
 
         QueryParamsMap test;
-        resource->get(test, &onGetSensor);
+        resource->get(test, &onGetLed);
     }
 }
 
@@ -475,6 +511,7 @@ void foundResource(std::shared_ptr<OCResource> resource)
             }
             if(resourceURI == "/grovepi/led")
             {
+		    std::cout << "Find LED resource" << std::endl;
                 ledResource = resource;
                 // Call a local function which will internally invoke get API on the resource pointer
                 //getLedRepresentation(resource);
@@ -558,12 +595,12 @@ static void print_menu_led()
 
 static int led_read(int led)
 {
-
+	getLedRepresentation(ledResource);
 }
 
 static int led_write(int led)
 {
-
+	putLedRepresentation(ledResource);
 }
 
 int main(int argc, char* argv[]) {
@@ -610,15 +647,20 @@ int main(int argc, char* argv[]) {
 	OCPlatform::Configure(cfg);
 	try
 	{
+		std::string sensor_rt = "?rt=grovepi.sensor";
+		std::string led_rt = "?rt=grovepi.led";
+
 		// makes it so that all boolean values are printed as 'true/false' in this stream
 		std::cout.setf(std::ios::boolalpha);
 		// Find all resources
-		//requestURI << OC_RSRVD_WELL_KNOWN_URI;// << "?rt=core.light";
-		requestURI << OC_RSRVD_WELL_KNOWN_URI << "?rt=grovepi.sensor";// << "?rt=core.light";
-
+		requestURI << OC_RSRVD_WELL_KNOWN_URI << sensor_rt;
 		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
 		std::cout<< "Finding Resource... " <<std::endl;
 
+		requestURI.str("");
+		requestURI << OC_RSRVD_WELL_KNOWN_URI << led_rt;
+		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+		std::cout<< "Finding Resource... " <<std::endl;
 #if 0
         // Find resource is done twice so that we discover the original resources a second time.
         // These resources will have the same uniqueidentifier (yet be different objects), so that
@@ -636,6 +678,10 @@ int main(int argc, char* argv[]) {
         std::condition_variable cv;
         std::unique_lock<std::mutex> lock(blocker);
         cv.wait(lock);
+	while(true)
+	{
+		
+	}
 #else
 	while(true)
 	{

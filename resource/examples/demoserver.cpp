@@ -80,8 +80,16 @@ public:
 		led_rep.setValue("name", "Grovepi LED");
 
 		setenv("PYTHONPATH", py_path.c_str(), 1);
+
+		// Initialize the Python Interpreter
+		Py_Initialize();
 	}
 
+	~DemoResource()
+	{
+		// Finish the Python Interpreter
+		Py_Finalize();
+	}
 
 	/* Note that this does not need to be a member function: for classes you do not have
 	access to, you can accomplish this with a free function: */
@@ -119,7 +127,7 @@ public:
 			cout << "Resource creation was unsuccessful\n";
 		}
 
-#if 0
+		// Create LED resource
 		resourceURI = "/grovepi/led";
 		resourceTypeName = "grovepi.led";
 		result = OCPlatform::registerResource(
@@ -130,15 +138,12 @@ public:
 		{
 			cout << "Resource creation was unsuccessful\n";
 		}
-#endif
 	}
 
 	PyObject* call_py_func(char *func_name, PyObject *value)
 	{
 		PyObject *p_filename, *p_module, *p_dict, *p_func, *p_result = NULL;
 
-		// Initialize the Python Interpreter
-		Py_Initialize();
 		// Build the name object
 		p_filename = PyString_FromString((char *)"grovepilib");
 		// Load the module object
@@ -162,8 +167,6 @@ public:
 		Py_DECREF(p_filename);
 		Py_DECREF(p_module);
 		Py_DECREF(p_dict);
-		// Finish the Python Interpreter
-		Py_Finalize();
 
 		return p_result;
 	}
@@ -219,6 +222,7 @@ public:
 		}
 	}
 
+#if 0
 	int led_read_red()
 	{
 		PyObject *p_result;
@@ -229,24 +233,6 @@ public:
 		{
 			//std::cout << PyInt_AsLong(p_result) << std::endl;
 			return PyInt_AsLong(p_result);
-		}
-		else
-		{
-			return -1;
-		}
-	}
-
-	int led_write_red(int status)
-	{
-		PyObject *p_result, *p_value;
-
-		p_value = Py_BuildValue("(i)", status);
-
-		p_result = call_py_func("led_write_red", p_value);
-
-		if(p_result)
-		{
-			return 0;
 		}
 		else
 		{
@@ -271,13 +257,31 @@ public:
 		}
 	}
 
-	int led_write_green(int status)
+	int led_read_blue()
+	{
+		PyObject *p_result;
+
+		p_result = call_py_func("led_read_blue", NULL);
+
+		if(p_result)
+		{
+			//std::cout << PyInt_AsLong(p_result) << std::endl;
+			return PyInt_AsLong(p_result);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+#endif
+
+	int led_write_red(int status)
 	{
 		PyObject *p_result, *p_value;
 
 		p_value = Py_BuildValue("(i)", status);
 
-		p_result = call_py_func("led_write_green", p_value);
+		p_result = call_py_func("led_write_red", p_value);
 
 		if(p_result)
 		{
@@ -289,16 +293,17 @@ public:
 		}
 	}
 
-	int led_read_blue()
+	int led_write_green(int status)
 	{
-		PyObject *p_result;
+		PyObject *p_result, *p_value;
 
-		p_result = call_py_func("led_read_blue", NULL);
+		p_value = Py_BuildValue("(i)", status);
+
+		p_result = call_py_func("led_write_green", p_value);
 
 		if(p_result)
 		{
-			//std::cout << PyInt_AsLong(p_result) << std::endl;
-			return PyInt_AsLong(p_result);
+			return 0;
 		}
 		else
 		{
@@ -368,6 +373,45 @@ public:
 		}
 	}
 
+	void put_led(OCRepresentation& rep)
+	{
+		try {
+			if (rep.getValue("red", led_red))
+			{
+				//cout << "\t\t\t\t" << "Red LED: " << led_red << endl;
+				led_write_red(led_red);
+			}
+			else
+			{
+				cout << "\t\t\t\t" << "red not found in the representation" << endl;
+			}
+
+			if (rep.getValue("green", led_green))
+			{
+				//cout << "\t\t\t\t" << "Green LED: " << led_green << endl;
+				led_write_green(led_green);
+			}
+			else
+			{
+				cout << "\t\t\t\t" << "green not found in the representation" << endl;
+			}
+
+			if (rep.getValue("blue", led_blue))
+			{
+				//cout << "\t\t\t\t" << "Blue LED: " << led_blue << endl;
+				led_write_blue(led_blue);
+			}
+			else
+			{
+				cout << "\t\t\t\t" << "blue not found in the representation" << endl;
+			}
+		}
+		catch (exception& e)
+		{
+			cout << e.what() << endl;
+		}
+	}
+
 	// Post representation.
 	// Post can create new resource or simply act like put.
 	// Gets values from the representation and
@@ -394,12 +438,12 @@ public:
 		// from second time onwards it just puts
 		put(rep);
 #endif
-		return get();
+		return get_sensor();
 	}
 
 
 	// gets the updated representation.
-	OCRepresentation get()
+	OCRepresentation get_sensor()
 	{
 		sensor_temp = sensor_read_temp();
 		sensor_humidity = sensor_read_humidity();
@@ -408,6 +452,21 @@ public:
 		sensor_rep.setValue("temperature", sensor_temp);
 		sensor_rep.setValue("humidity", sensor_humidity);
 		sensor_rep.setValue("light", sensor_light);
+		return sensor_rep;
+	}
+
+	OCRepresentation get_led()
+	{
+#if 0
+		// LED status can not be read, set pin mode to INPUT will turn off the LED
+		led_red = led_read_red();
+		led_green = led_read_green();
+		led_blue = led_read_blue();
+#endif
+
+		sensor_rep.setValue("red", led_red);
+		sensor_rep.setValue("green", led_green);
+		sensor_rep.setValue("blue", led_blue);
 		return sensor_rep;
 	}
 
@@ -466,7 +525,7 @@ OCEntityHandlerResult sensor_entityHandler(std::shared_ptr<OCResourceRequest> re
 				cout << "\t\t\trequestType : GET\n";
 				pResponse->setErrorCode(200);
 				pResponse->setResponseResult(OC_EH_OK);
-				pResponse->setResourceRepresentation(get());
+				pResponse->setResourceRepresentation(get_sensor());
 				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
 				{
 					ehResult = OC_EH_OK;
@@ -475,6 +534,7 @@ OCEntityHandlerResult sensor_entityHandler(std::shared_ptr<OCResourceRequest> re
 			else if(requestType == "PUT")
 			{
 				cout << "\t\t\trequestType : PUT\n";
+#if 0
 				OCRepresentation rep = request->getResourceRepresentation();
 
 				// Do related operations related to PUT request
@@ -482,11 +542,12 @@ OCEntityHandlerResult sensor_entityHandler(std::shared_ptr<OCResourceRequest> re
 				put(rep);
 				pResponse->setErrorCode(200);
 				pResponse->setResponseResult(OC_EH_OK);
-				pResponse->setResourceRepresentation(get());
+				pResponse->setResourceRepresentation(get_sensor());
 				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
 				{
 					ehResult = OC_EH_OK;
 				}
+#endif
 			}
 			else if(requestType == "POST")
 			{
@@ -596,7 +657,7 @@ OCEntityHandlerResult led_entityHandler(std::shared_ptr<OCResourceRequest> reque
 				cout << "\t\t\trequestType : GET\n";
 				pResponse->setErrorCode(200);
 				pResponse->setResponseResult(OC_EH_OK);
-				pResponse->setResourceRepresentation(get());
+				pResponse->setResourceRepresentation(get_led());
 				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
 				{
 					ehResult = OC_EH_OK;
@@ -605,20 +666,18 @@ OCEntityHandlerResult led_entityHandler(std::shared_ptr<OCResourceRequest> reque
 			else if(requestType == "PUT")
 			{
 				cout << "\t\t\trequestType : PUT\n";
-#if 0
 				OCRepresentation rep = request->getResourceRepresentation();
 
 				// Do related operations related to PUT request
 				// Update the lightResource
-				put(rep);
+				put_led(rep);
 				pResponse->setErrorCode(200);
 				pResponse->setResponseResult(OC_EH_OK);
-				pResponse->setResourceRepresentation(get());
+				pResponse->setResourceRepresentation(get_led());
 				if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
 				{
 					ehResult = OC_EH_OK;
 				}
-#endif
 			}
 			else if(requestType == "POST")
 			{
@@ -762,7 +821,7 @@ void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequ
     auto pResponse = std::make_shared<OC::OCResourceResponse>();
     pResponse->setRequestHandle(pRequest->getRequestHandle());
     pResponse->setResourceHandle(pRequest->getResourceHandle());
-    pResponse->setResourceRepresentation(demoPtr->get());
+    pResponse->setResourceRepresentation(demoPtr->get_sensor());
     pResponse->setErrorCode(200);
     pResponse->setResponseResult(OC_EH_OK);
 
