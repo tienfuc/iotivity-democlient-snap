@@ -336,10 +336,6 @@ void putLedRepresentation(std::shared_ptr<OCResource> resource)
 
         std::cout << "Putting LED representation..."<<std::endl;
 
-        mydemo.led_red = 1;
-        mydemo.led_green = 1;
-        mydemo.led_blue = 1;
-
         rep.setValue("red", mydemo.led_red);
         rep.setValue("green", mydemo.led_green);
         rep.setValue("blue", mydemo.led_blue);
@@ -351,9 +347,12 @@ void putLedRepresentation(std::shared_ptr<OCResource> resource)
 
 void sensor_write_db()
 {
-	std::ostringstream db_cmd;
-	db_cmd << "curl -i -XPOST 'http://10.101.46.34:8086/write?db=fukuoka' --data-binary 'temperature,sensor=1 value=" << mydemo.sensor_temp << "'";
-	std::cout << db_cmd << std::endl;
+	std::string db_cmd;
+	db_cmd = "curl -i -XPOST 'http://10.101.46.34:8086/write?db=fukuoka' --data-binary 'temperature,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_temp);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	system(db_cmd.c_str());
 }
 
 // Callback handler on GET request
@@ -600,6 +599,28 @@ static int led_read(int led)
 
 static int led_write(int led)
 {
+	switch(led)
+	{
+		case 1:
+			mydemo.led_red = 1;
+			break;
+		case 2:
+			mydemo.led_green = 1;
+			break;
+		case 3:
+			mydemo.led_blue = 1;
+			break;
+		case 4:
+			mydemo.led_red = 0;
+			break;
+		case 5:
+			mydemo.led_green = 0;
+			break;
+		case 6:
+			mydemo.led_blue = 0;
+			break;
+	}
+	
 	putLedRepresentation(ledResource);
 }
 
@@ -701,9 +722,7 @@ int main(int argc, char* argv[]) {
 			case 2:
 				print_menu_led();
 				std::cin >> cmd1;
-				if(cmd1 >= 1 && cmd1 <= 3)
-					led_read(cmd1);
-				else if(cmd1 >= 4 && cmd1 <= 6)
+				if(cmd1 >=1 && cmd1 <=6)
 					led_write(cmd1);
 				else
 					std::cout << "Unknown option: " << cmd1 << std::endl;
