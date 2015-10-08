@@ -80,15 +80,6 @@ public:
 		led_rep.setValue("name", "Grovepi LED");
 
 		setenv("PYTHONPATH", py_path.c_str(), 1);
-
-		// Initialize the Python Interpreter
-		Py_Initialize();
-	}
-
-	~DemoResource()
-	{
-		// Finish the Python Interpreter
-		Py_Finalize();
 	}
 
 	/* Note that this does not need to be a member function: for classes you do not have
@@ -140,22 +131,40 @@ public:
 		}
 	}
 
-	PyObject* call_py_func(char *func_name, PyObject *value)
+	void py_prolog(PyObject **filename, PyObject **module, PyObject **dict, PyObject **func, char *func_name)
+	{
+		// Initialize the Python Interpreter
+		Py_Initialize();
+		// Build the name object
+		*filename = PyString_FromString((char *)"grovepilib");
+		// Load the module object
+		*module = PyImport_Import(*filename);
+		// pDict is a borrowed reference 
+		*dict = PyModule_GetDict(*module);
+
+		*func = PyDict_GetItemString(*dict, func_name);
+	}
+
+	void py_epilog(PyObject **filename, PyObject **module, PyObject **dict, PyObject **func)
+	{
+		Py_DECREF(*filename);
+		Py_DECREF(*module);
+		Py_DECREF(*dict);
+		Py_DECREF(*func);
+		// Finish the Python Interpreter
+		Py_Finalize();
+	}
+
+	PyObject* py_func(char *func_name)
 	{
 		PyObject *p_filename, *p_module, *p_dict, *p_func, *p_result = NULL;
 
-		// Build the name object
-		p_filename = PyString_FromString((char *)"grovepilib");
-		// Load the module object
-		p_module = PyImport_Import(p_filename);
-		// pDict is a borrowed reference 
-		p_dict = PyModule_GetDict(p_module);
+		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
 	
-		p_func = PyDict_GetItemString(p_dict, func_name);
 		if(PyCallable_Check(p_func))
 		{
 			std::cout << "Access grovepi library" << std::endl;
-			p_result = PyObject_CallObject(p_func, value);
+			p_result = PyObject_CallObject(p_func, NULL);
 			PyErr_Print();
 		}
 		else
@@ -164,9 +173,31 @@ public:
 			PyErr_Print();
 		}
 
-		Py_DECREF(p_filename);
-		Py_DECREF(p_module);
-		Py_DECREF(p_dict);
+		py_epilog(&p_filename, &p_module, &p_dict, &p_func);
+
+		return p_result;
+	}
+
+	PyObject* py_func(char *func_name, int value)
+	{
+		PyObject *p_filename, *p_module, *p_dict, *p_func, *p_value, *p_result = NULL;
+
+		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
+	
+		if(PyCallable_Check(p_func))
+		{
+			std::cout << "Access grovepi library" << std::endl;
+			p_value = Py_BuildValue("(i)", value);
+			p_result = PyObject_CallObject(p_func, p_value);
+			PyErr_Print();
+		}
+		else
+		{
+			std::cout << "Can not access Grovepi library" << std::endl;
+			PyErr_Print();
+		}
+
+		py_epilog(&p_filename, &p_module, &p_dict, &p_func);
 
 		return p_result;
 	}
@@ -175,51 +206,36 @@ public:
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("sensor_read_temp", NULL);
+		p_result = py_func((char *)"sensor_read_temp");
 
 		if(p_result)
-		{
-			//std::cout << PyFloat_AsDouble(p_result) << std::endl;
 			return PyFloat_AsDouble(p_result);
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	double sensor_read_humidity()
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("sensor_read_humidity", NULL);
+		p_result = py_func((char *)"sensor_read_humidity");
 
 		if(p_result)
-		{
-			//std::cout << PyFloat_AsDouble(p_result) << std::endl;
 			return PyFloat_AsDouble(p_result);
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	int sensor_read_light()
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("sensor_read_light", NULL);
+		p_result = py_func((char *)"sensor_read_light");
 
 		if(p_result)
-		{
-			//std::cout << PyInt_AsLong(p_result) << std::endl;
 			return PyInt_AsLong(p_result);
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 #if 0
@@ -227,106 +243,73 @@ public:
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("led_read_red", NULL);
+		p_result = py_func((char *)"led_read_red", NULL);
 
 		if(p_result)
-		{
-			//std::cout << PyInt_AsLong(p_result) << std::endl;
 			return PyInt_AsLong(p_result);
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	int led_read_green()
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("led_read_green", NULL);
+		p_result = py_func((char *)"led_read_green", NULL);
 
 		if(p_result)
-		{
-			//std::cout << PyInt_AsLong(p_result) << std::endl;
 			return PyInt_AsLong(p_result);
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	int led_read_blue()
 	{
 		PyObject *p_result;
 
-		p_result = call_py_func("led_read_blue", NULL);
+		p_result = py_func((char *)"led_read_blue", NULL);
 
 		if(p_result)
-		{
-			//std::cout << PyInt_AsLong(p_result) << std::endl;
 			return PyInt_AsLong(p_result);
-		}
 		else
-		{
 			return -1;
-		}
 	}
 #endif
 
 	int led_write_red(int status)
 	{
-		PyObject *p_result, *p_value;
+		PyObject *p_result;
 
-		p_value = Py_BuildValue("(i)", status);
-
-		p_result = call_py_func("led_write_red", p_value);
+		p_result = py_func((char *)"led_write_red", status);
 
 		if(p_result)
-		{
 			return 0;
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	int led_write_green(int status)
 	{
-		PyObject *p_result, *p_value;
+		PyObject *p_result;
 
-		p_value = Py_BuildValue("(i)", status);
-
-		p_result = call_py_func("led_write_green", p_value);
+		p_result = py_func((char *)"led_write_green", status);
 
 		if(p_result)
-		{
 			return 0;
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	int led_write_blue(int status)
 	{
-		PyObject *p_result, *p_value;
+		PyObject *p_result;
 
-		p_value = Py_BuildValue("(i)", status);
-
-		p_result = call_py_func("led_write_blue", p_value);
+		p_result = py_func((char *)"led_write_blue", status);
 
 		if(p_result)
-		{
 			return 0;
-		}
 		else
-		{
 			return -1;
-		}
 	}
 
 	OCResourceHandle getHandle()

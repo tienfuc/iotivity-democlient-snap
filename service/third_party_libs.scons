@@ -48,14 +48,14 @@ if target_os in ['linux', 'tizen']:
 ''' % target_arch
 
 		conf = Configure(lib_env)
+		if target_arch not in ['armeabi-v7a-hard']:
+			if target_os not in ['tizen'] and not conf.CheckLib('boost_thread', language='C++'):
+				print 'Did not find boost_thread, exiting!'
+				Exit(1)
 
-		if target_os not in ['tizen'] and not conf.CheckLib('boost_thread', language='C++'):
-			print 'Did not find boost_thread, exiting!'
-			Exit(1)
-
-		if target_os not in ['tizen'] and not conf.CheckLib('boost_system', language='C++'):
-			print 'Did not find boost_system, exiting!'
-			Exit(1)
+			if target_os not in ['tizen'] and not conf.CheckLib('boost_system', language='C++'):
+				print 'Did not find boost_system, exiting!'
+				Exit(1)
 
 		lib_env = conf.Finish()
 

@@ -352,7 +352,7 @@ void sensor_write_db()
        	db_cmd += std::to_string(mydemo.sensor_temp);
 	db_cmd += "'";
 	std::cout << db_cmd.c_str() << std::endl;
-	system(db_cmd.c_str());
+	//system(db_cmd.c_str());
 }
 
 // Callback handler on GET request
