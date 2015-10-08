@@ -42,6 +42,7 @@ std::mutex curResourceLock;
 class Demo
 {
 public:
+	std::string influxdb_ip;
 
 	double sensor_temp;
 	double sensor_humidity;
@@ -348,8 +349,34 @@ void putLedRepresentation(std::shared_ptr<OCResource> resource)
 void sensor_write_db()
 {
 	std::string db_cmd;
-	db_cmd = "curl -i -XPOST 'http://10.101.46.34:8086/write?db=fukuoka' --data-binary 'temperature,sensor=1 value=";
+	std::string url;
+       
+	url = "curl -i -XPOST 'http://";
+	url += mydemo.influxdb_ip;
+	url += "/write?db=fukuoka' --data-binary ";
+
+	// Temperature sensor
+	db_cmd = url;
+	db_cmd += "'temperature,sensor=1 value=";
        	db_cmd += std::to_string(mydemo.sensor_temp);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	//system(db_cmd.c_str());
+
+
+	// Humidity sensor
+	db_cmd = url;
+	db_cmd += "'humidity,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_humidity);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	//system(db_cmd.c_str());
+
+
+	// Light sensor
+	db_cmd = url;
+	db_cmd += "'light,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_light);
 	db_cmd += "'";
 	std::cout << db_cmd.c_str() << std::endl;
 	//system(db_cmd.c_str());
@@ -531,12 +558,11 @@ void foundResource(std::shared_ptr<OCResource> resource)
 
 void printUsage()
 {
-    std::cout << std::endl;
-    std::cout << "---------------------------------------------------------------------\n";
-    std::cout << "Usage : simpleclient <ObserveType>" << std::endl;
-    std::cout << "   ObserveType : 1 - Observe" << std::endl;
-    std::cout << "   ObserveType : 2 - ObserveAll" << std::endl;
-    std::cout << "---------------------------------------------------------------------\n\n";
+	std::cout << std::endl;
+	std::cout << "---------------------------------------------------------------------\n";
+	std::cout << "Usage :" << std::endl;
+	std::cout << "democlient <influxdb IP address>:<port>" << std::endl;
+	std::cout << "---------------------------------------------------------------------\n\n";
 }
 
 void checkObserverValue(int value)
@@ -563,41 +589,17 @@ static FILE* client_open(const char* /*path*/, const char *mode)
     return fopen("./oic_svr_db_client.json", mode);
 }
 
-static void print_menu()
-{
-	std::cout << "Demo client menu" << std::endl;
-	std::cout << "1 : read sensors" << std::endl;
-	std::cout << "2 : control leds" << std::endl;
-}
-
-static void print_menu_sensor()
-{
-	std::cout << "1 : read temperature sensor" << std::endl;
-	std::cout << "2 : read humidity sensor" << std::endl;
-	std::cout << "3 : read light sensor" << std::endl;
-}
-
-static int sensor_read(int sensor)
+static void sensor_read()
 {
 	getSensorRepresentation(sensorResource);
 }
 
-static void print_menu_led()
-{
-	std::cout << "1 : turn on red LED" << std::endl;
-	std::cout << "2 : turn on green LED" << std::endl;
-	std::cout << "3 : turn on blue LED" << std::endl;
-	std::cout << "4 : turn off red LED" << std::endl;
-	std::cout << "5 : turn off green LED" << std::endl;
-	std::cout << "6 : turn off blue LED" << std::endl;
-}
-
-static int led_read(int led)
+static void led_read()
 {
 	getLedRepresentation(ledResource);
 }
 
-static int led_write(int led)
+static void led_write(int led)
 {
 	switch(led)
 	{
@@ -624,11 +626,28 @@ static int led_write(int led)
 	putLedRepresentation(ledResource);
 }
 
+static void print_menu()
+{
+	std::cout << "Demo client menu" << std::endl;
+	std::cout << "1 : read sensors" << std::endl;
+	std::cout << "2 : control leds" << std::endl;
+}
+
+static void print_menu_led()
+{
+	std::cout << "1 : turn on red LED" << std::endl;
+	std::cout << "2 : turn on green LED" << std::endl;
+	std::cout << "3 : turn on blue LED" << std::endl;
+	std::cout << "4 : turn off red LED" << std::endl;
+	std::cout << "5 : turn off green LED" << std::endl;
+	std::cout << "6 : turn off blue LED" << std::endl;
+	std::cout << "7 : read LED status" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
 
 	std::ostringstream requestURI;
 	OCPersistentStorage ps {client_open, fread, fwrite, fclose, unlink };
-
 #if 0
     try
     {
@@ -653,6 +672,17 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 #endif
+
+	if(argc == 2)
+	{
+		mydemo.influxdb_ip = argv[1];
+		std::cout << "Infruxdb_ip: " << mydemo.influxdb_ip << std::endl;
+	}
+	else
+	{
+		printUsage();
+		return 0;
+	}
 
 	std::cout << "Configuring ... " << std::endl;
 	// Create PlatformConfig object
@@ -712,18 +742,15 @@ int main(int argc, char* argv[]) {
 		switch(cmd)
 		{
 			case 1:
-				print_menu_sensor();
-				std::cin >> cmd1;
-				if(cmd1 >= 1 && cmd1 <= 3)
-					sensor_read(cmd1);
-				else
-					std::cout << "Unknown option: " << cmd1 << std::endl;
+				sensor_read();
 				break;
 			case 2:
 				print_menu_led();
 				std::cin >> cmd1;
 				if(cmd1 >=1 && cmd1 <=6)
 					led_write(cmd1);
+				else if(cmd1 == 7)
+					led_read();
 				else
 					std::cout << "Unknown option: " << cmd1 << std::endl;
 				break;
