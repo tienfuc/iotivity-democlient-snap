@@ -38,7 +38,8 @@ std::shared_ptr<OCResource> sensorResource;
 std::shared_ptr<OCResource> ledResource;
 std::shared_ptr<OCResource> lcdResource;
 std::shared_ptr<OCResource> buzzerResource;
-static ObserveType OBSERVE_TYPE_TO_USE = ObserveType::Observe;
+std::shared_ptr<OCResource> buttonResource;
+static ObserveType observe_type = ObserveType::Observe;
 std::mutex curResourceLock;
 
 class Demo
@@ -55,6 +56,7 @@ public:
 	int led_blue;
 	std::string lcd_str;
 	double buzzer;
+	int button;
 
 	std::string m_name;
 
@@ -62,6 +64,7 @@ public:
 		led_red(0), led_green(0), led_blue(0),
 	  	lcd_str("LCD Demo"),
 		buzzer(0.0),
+		button(0),
 		m_name("")
 	{
 	}
@@ -78,6 +81,7 @@ int observe_count()
 void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& rep,
                     const int& eCode, const int& sequenceNumber)
 {
+	std::cout << "onObserve" << std::endl;
 	try {
 		if(eCode == OC_STACK_OK && sequenceNumber != OC_OBSERVE_NO_OPTION) {
 			if(sequenceNumber == OC_OBSERVE_REGISTER)
@@ -85,17 +89,11 @@ void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& re
 			else if(sequenceNumber == OC_OBSERVE_DEREGISTER)
 				std::cout << "Observe De-registration action is successful" << std::endl;
 
-#if 0
 			std::cout << "OBSERVE RESULT:"<<std::endl;
 			std::cout << "\tSequenceNumber: "<< sequenceNumber << std::endl;
-			rep.getValue("temperature", mydemo.m_temp);
-			rep.getValue("humidity", mydemo.m_humidity);
-			rep.getValue("name", mydemo.m_name);
+			rep.getValue("button", mydemo.button);
+			std::cout << "button: " << mydemo.button << std::endl;
 
-			std::cout << "\ttemperature: " << mydemo.m_temp << std::endl;
-			std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
-			std::cout << "\tname: " << mydemo.m_name << std::endl;
-#endif
 			if(observe_count() == 11) {
 				std::cout<<"Cancelling Observe..."<<std::endl;
 				//OCStackResult result = curResource->cancelObserve();
@@ -439,6 +437,29 @@ void onGetLed(const HeaderOptions& /*headerOptions*/, const OCRepresentation& re
 	}
 }
 
+void onGetButton(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, const int eCode)
+{
+	try {
+		if(eCode == OC_STACK_OK) {
+			std::cout << "GET request was successful" << std::endl;
+			std::cout << "Resource URI: " << rep.getUri() << std::endl;
+
+			rep.getValue("button", mydemo.button);
+
+			std::cout << "\tbutton: " << mydemo.button << std::endl;
+
+			//putLedRepresentation(ledResource);
+		} else {
+			std::cout << "onGET Response error: " << eCode << std::endl;
+			std::exit(-1);
+		}
+	}
+	catch(std::exception& e) {
+		std::cout << "Exception: " << e.what() << " in onGetButton" << std::endl;
+	}
+}
+
+			
 // Local function to get representation of light resource
 void getSensorRepresentation(std::shared_ptr<OCResource> resource)
 {
@@ -462,6 +483,17 @@ void getLedRepresentation(std::shared_ptr<OCResource> resource)
 	}
 }
 
+void getButtonRepresentation(std::shared_ptr<OCResource> resource)
+{
+	if(resource) {
+		std::cout << "Getting Button Representation..."<<std::endl;
+		// Invoke resource's get API with the callback parameter
+
+		QueryParamsMap test;
+		resource->get(test, &onGetButton);
+	}
+}
+
 // Callback to found resources
 void foundResource(std::shared_ptr<OCResource> resource)
 {
@@ -480,7 +512,7 @@ void foundResource(std::shared_ptr<OCResource> resource)
 			std::cout<<"Found resource "<< resource->uniqueIdentifier() << " again!"<<std::endl;
 		}
 
-		if(sensorResource && ledResource && lcdResource && buzzerResource) {
+		if(sensorResource && ledResource && lcdResource && buzzerResource && buttonResource) {
 			std::cout << "Found another resource, ignoring"<<std::endl;
 			return;
 		}
@@ -535,6 +567,15 @@ void foundResource(std::shared_ptr<OCResource> resource)
 				//getLcdRepresentation(resource);
 			}
 
+			if(resourceURI == "/grovepi/button") {
+				std::cout << "Find button resource" << std::endl;
+				buttonResource = resource;
+				// Call a local function which will internally invoke get API on the resource pointer
+				//getLcdRepresentation(resource);
+
+            			buttonResource->observe(observe_type, QueryParamsMap(), &onObserve);
+			}
+
 		} else {
 			// Resource is invalid
 			std::cout << "Resource is invalid" << std::endl;
@@ -556,6 +597,7 @@ void printUsage()
 
 void checkObserverValue(int value)
 {
+#if 0
 	if (value == 1) {
 		OBSERVE_TYPE_TO_USE = ObserveType::Observe;
 		std::cout << "<===Setting ObserveType to Observe===>\n\n";
@@ -566,6 +608,7 @@ void checkObserverValue(int value)
 		std::cout << "<===Invalid ObserveType selected."
 		<< " Setting ObserveType to Observe===>\n\n";
 	}
+#endif
 }
 
 static FILE* client_open(const char* /*path*/, const char *mode)
@@ -581,6 +624,11 @@ static void sensor_read()
 static void led_read()
 {
 	getLedRepresentation(ledResource);
+}
+
+static void button_read()
+{
+	getButtonRepresentation(buttonResource);
 }
 
 static void led_write(int led)
@@ -682,6 +730,7 @@ int main(int argc, char* argv[]) {
 		std::string led_rt = "?rt=grovepi.led";
 		std::string lcd_rt = "?rt=grovepi.lcd";
 		std::string buzzer_rt = "?rt=grovepi.buzzer";
+		std::string button_rt = "?rt=grovepi.button";
 
 		// makes it so that all boolean values are printed as 'true/false' in this stream
 		std::cout.setf(std::ios::boolalpha);
@@ -704,6 +753,11 @@ int main(int argc, char* argv[]) {
 		requestURI << OC_RSRVD_WELL_KNOWN_URI << buzzer_rt;
 		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
 		std::cout<< "Finding Buzzer Resource... " <<std::endl;
+
+		requestURI.str("");
+		requestURI << OC_RSRVD_WELL_KNOWN_URI << button_rt;
+		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+		std::cout<< "Finding Button Resource... " <<std::endl;
 #if 0
 		// A condition variable will free the mutex it is given, then do a non-
 		// intensive block until 'notify' is called on it.  In this case, since we

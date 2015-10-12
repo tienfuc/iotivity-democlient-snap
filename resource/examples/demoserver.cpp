@@ -67,9 +67,13 @@ public:
 	OCResourceHandle buzzer_resourceHandle;
 	OCRepresentation buzzer_rep;
 
+	int button;
+	OCResourceHandle button_resourceHandle;
+	OCRepresentation button_rep;
+
 	ObservationIds m_interestedObservers;
 
-	std::string py_path = "../../../../../../extlibs/GrovePi/Software/Python";
+	std::string py_path = "/home/u/demo/iotivity/extlibs/GrovePi/Software/Python";
 
 public:
 	DemoResource()
@@ -78,7 +82,9 @@ public:
 		led_red(0), led_green(0), led_blue(0), 
 		lcd_str("LCD Demo"),
 		buzzer(0.0),
-		sensor_resourceHandle(nullptr), led_resourceHandle(nullptr), lcd_resourceHandle(nullptr)
+		button(0),
+		sensor_resourceHandle(nullptr), led_resourceHandle(nullptr), lcd_resourceHandle(nullptr), 
+		buzzer_resourceHandle(nullptr), button_resourceHandle(nullptr)
 	{
 		// Initialize representation
 		sensor_rep.setUri("/grovepi/sensor");
@@ -97,6 +103,9 @@ public:
 
 		led_rep.setUri("/grovepi/buzzer");
 		led_rep.setValue("buzzer", buzzer);
+
+		led_rep.setUri("/grovepi/button");
+		led_rep.setValue("button", button);
 
 		setenv("PYTHONPATH", py_path.c_str(), 1);
 	}
@@ -125,6 +134,7 @@ public:
 		EntityHandler led_cb = std::bind(&DemoResource::led_entityHandler, this,PH::_1);
 		EntityHandler lcd_cb = std::bind(&DemoResource::lcd_entityHandler, this,PH::_1);
 		EntityHandler buzzer_cb = std::bind(&DemoResource::buzzer_entityHandler, this,PH::_1);
+		EntityHandler button_cb = std::bind(&DemoResource::button_entityHandler, this,PH::_1);
 
 		// This will internally create and register the resource.
 		OCStackResult result = OCPlatform::registerResource(
@@ -163,6 +173,16 @@ public:
 
 		if (OC_STACK_OK != result)
 			cout << "Buzzer resource creation was unsuccessful\n";
+
+		// Create Button resource
+		resourceURI = "/grovepi/button";
+		resourceTypeName = "grovepi.button";
+		result = OCPlatform::registerResource(
+			button_resourceHandle, resourceURI, resourceTypeName,
+			resourceInterface, button_cb, resourceProperty);
+
+		if (OC_STACK_OK != result)
+			cout << "Button resource creation was unsuccessful\n";
 	}
 
 	void py_prolog(PyObject **filename, PyObject **module, PyObject **dict, PyObject **func, char *func_name)
@@ -384,10 +404,18 @@ public:
 			return -1;
 	}
 
-	OCResourceHandle getHandle()
+	int button_read()
 	{
-		return sensor_resourceHandle;
+		PyObject *p_result;
+
+		p_result = py_func((char *)"button_read");
+
+		if(p_result)
+			return PyInt_AsLong(p_result);
+		else
+			return -1;
 	}
+
 
 	// Puts representation.
 	// Gets values from the representation and
@@ -546,8 +574,14 @@ public:
 
 	OCRepresentation get_buzzer()
 	{
-		lcd_rep.setValue("buzzer", buzzer);
-		return lcd_rep;
+		buzzer_rep.setValue("buzzer", buzzer);
+		return buzzer_rep;
+	}
+
+	OCRepresentation get_button()
+	{
+		button_rep.setValue("button", button);
+		return button_rep;
 	}
 
 	void addType(const std::string& type) const
@@ -976,6 +1010,133 @@ private:
 		return ehResult;
 	}
 
+	OCEntityHandlerResult button_entityHandler(std::shared_ptr<OCResourceRequest> request)
+	{
+		cout << "\tIn Server CPP entity handler:\n";
+		OCEntityHandlerResult ehResult = OC_EH_ERROR;
+
+		if(request) {
+			// Get the request type and request flag
+			std::string requestType = request->getRequestType();
+			int requestFlag = request->getRequestHandlerFlag();
+
+			if(requestFlag & RequestHandlerFlag::RequestFlag) {
+				cout << "\t\trequestFlag : Request\n";
+				auto pResponse = std::make_shared<OC::OCResourceResponse>();
+				pResponse->setRequestHandle(request->getRequestHandle());
+				pResponse->setResourceHandle(request->getResourceHandle());
+
+				// Check for query params (if any)
+				QueryParamsMap queries = request->getQueryParameters();
+
+				if (!queries.empty()) {
+					std::cout << "\nQuery processing upto entityHandler" << std::endl;
+				}
+
+				for (auto it : queries) {
+					std::cout << "Query key: " << it.first << " value : " << it.second << std:: endl;
+				}
+
+				if(requestType == "GET") {
+					cout << "\t\t\trequestType : GET\n";
+					pResponse->setErrorCode(200);
+					pResponse->setResponseResult(OC_EH_OK);
+					pResponse->setResourceRepresentation(get_button());
+					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse)) {
+						ehResult = OC_EH_OK;
+					}
+				} else if(requestType == "PUT") {
+					cout << "\t\t\trequestType : PUT\n";
+#if 0
+					OCRepresentation rep = request->getResourceRepresentation();
+
+					// Do related operations related to PUT request
+					// Update the lightResource
+					put_buzzer(rep);
+					pResponse->setErrorCode(200);
+					pResponse->setResponseResult(OC_EH_OK);
+					pResponse->setResourceRepresentation(get_buzzer());
+					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse)) {
+						ehResult = OC_EH_OK;
+					}
+#endif
+				} else if(requestType == "POST") {
+					cout << "\t\t\trequestType : POST\n";
+#if 0
+					OCRepresentation rep = request->getResourceRepresentation();
+
+					// Do related operations related to POST request
+					OCRepresentation rep_post = post(rep);
+					pResponse->setResourceRepresentation(rep_post);
+					pResponse->setErrorCode(200);
+					if(rep_post.hasAttribute("createduri")) {
+						pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
+						pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
+					} else {
+						pResponse->setResponseResult(OC_EH_OK);
+					}
+
+					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+						ehResult = OC_EH_OK;
+#endif
+				} else if(requestType == "DELETE") {
+					cout << "Delete request received" << endl;
+				}
+			}
+
+			if(requestFlag & RequestHandlerFlag::ObserverFlag) {
+				ObservationInfo observationInfo = request->getObservationInfo();
+
+				if(ObserveAction::ObserveRegister == observationInfo.action) {
+					m_interestedObservers.push_back(observationInfo.obsId);
+				} else if(ObserveAction::ObserveUnregister == observationInfo.action) {
+					m_interestedObservers.erase(std::remove(
+							m_interestedObservers.begin(),
+							m_interestedObservers.end(),
+							observationInfo.obsId),
+							m_interestedObservers.end());
+				}
+
+				//pthread_t threadId;
+
+				cout << "\t\trequestFlag : Observer\n";
+				gObservation = 1;
+
+#if 0
+				static int startedThread = 0;
+
+				// Observation happens on a different thread in ChangeLightRepresentation function.
+				// If we have not created the thread already, we will create one here.
+
+				if(!startedThread) {
+					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
+					startedThread = 1;
+				}
+#endif
+				ehResult = OC_EH_OK;
+
+#if 0
+				sleep(5);
+				
+
+				OCStackResult result = OC_STACK_OK;
+				button = 10;
+				button_rep.setValue("button", button);
+				result = OCPlatform::notifyAllObservers(button_resourceHandle);
+
+				if(OC_STACK_NO_OBSERVERS == result) {
+					cout << "No More observers, stopping notifications" << endl;
+					gObservation = 0;
+				}
+#endif
+			}
+		} else {
+			std::cout << "Request invalid" << std::endl;
+		}
+
+		return ehResult;
+	}
+
 };
 
 
@@ -1120,8 +1281,8 @@ int main(int argc, char* argv[])
 					freeifaddrs(ifaddr);
 					return -1;
 				}
-				host_str = ifa->ifa_name;
-				host_str += " IPv4: ";
+				//host_str = ifa->ifa_name;
+				host_str = "IPv4: ";
 				host_str += host_ip;
 				std::cout << host_str << std::endl;
 			} else if(ifa->ifa_addr->sa_family == AF_INET6) {
@@ -1132,8 +1293,8 @@ int main(int argc, char* argv[])
 					freeifaddrs(ifaddr);
 					return -1;
 				}
-				host_str = ifa->ifa_name;
-				host_str += " IPv6: ";
+				//host_str = ifa->ifa_name;
+				host_str = "IPv6: ";
 				host_str += host_ip;
 				std::cout << host_str << std::endl;
 			}
