@@ -37,6 +37,7 @@ DiscoveredResourceMap discoveredResources;
 std::shared_ptr<OCResource> sensorResource;
 std::shared_ptr<OCResource> ledResource;
 std::shared_ptr<OCResource> lcdResource;
+std::shared_ptr<OCResource> buzzerResource;
 static ObserveType OBSERVE_TYPE_TO_USE = ObserveType::Observe;
 std::mutex curResourceLock;
 
@@ -48,16 +49,19 @@ public:
 	double sensor_temp;
 	double sensor_humidity;
 	int sensor_light;
+	int sensor_sound;
 	int led_red;
 	int led_green;
 	int led_blue;
 	std::string lcd_str;
+	double buzzer;
 
 	std::string m_name;
 
-	Demo() : sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), 
+	Demo() : sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), sensor_sound(0),
 		led_red(0), led_green(0), led_blue(0),
 	  	lcd_str("LCD Demo"),
+		buzzer(0.0),
 		m_name("")
 	{
 	}
@@ -191,10 +195,12 @@ void onPutSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
 			rep.getValue("temperature", mydemo.sensor_temp);
 			rep.getValue("humidity", mydemo.sensor_humidity);
 			rep.getValue("light", mydemo.sensor_light);
+			rep.getValue("sound", mydemo.sensor_sound);
 
 			std::cout << "\ttemperature: " << mydemo.sensor_humidity << std::endl;
 			std::cout << "\thumidity: " << mydemo.sensor_humidity << std::endl;
 			std::cout << "\tlight: " << mydemo.sensor_light << std::endl;
+			std::cout << "\tsound: " << mydemo.sensor_sound << std::endl;
 
 			//postDemoRepresentation(sensorResource);
 		} else {
@@ -249,9 +255,27 @@ void onPutLcd(const HeaderOptions& /*headerOptions*/, const OCRepresentation& re
 	}
 }
 
+void onPutBuzzer(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, const int eCode)
+{
+	try {
+		if(eCode == OC_STACK_OK) {
+			std::cout << "Buzzer PUT request was successful" << std::endl;
+
+			rep.getValue("buzzer", mydemo.buzzer);
+		} else {
+			std::cout << "onPutBuzzer Response error: " << eCode << std::endl;
+			std::exit(-1);
+		}
+	}
+	catch(std::exception& e) {
+		std::cout << "Exception: " << e.what() << " in onPutBuzzer" << std::endl;
+	}
+}
+
 // Local function to put a different state for this resource
 void putSensorRepresentation(std::shared_ptr<OCResource> resource)
 {
+#if 0
 	if(resource) {
 		OCRepresentation rep;
 
@@ -268,6 +292,7 @@ void putSensorRepresentation(std::shared_ptr<OCResource> resource)
 		// Invoke resource's put API with rep, query map and the callback parameter
 		resource->put(rep, QueryParamsMap(), &onPutSensor);
 	}
+#endif
 }
 
 void putLedRepresentation(std::shared_ptr<OCResource> resource)
@@ -300,6 +325,20 @@ void putLcdRepresentation(std::shared_ptr<OCResource> resource)
 	}
 }
 
+void putBuzzerRepresentation(std::shared_ptr<OCResource> resource)
+{
+	if(resource) {
+		OCRepresentation rep;
+
+		std::cout << "Putting Buzzer representation..."<<std::endl;
+
+		rep.setValue("buzzer", mydemo.buzzer);
+
+		// Invoke resource's put API with rep, query map and the callback parameter
+		resource->put(rep, QueryParamsMap(), &onPutBuzzer);
+	}
+}
+
 void sensor_write_db()
 {
 	std::string db_cmd;
@@ -315,7 +354,7 @@ void sensor_write_db()
        	db_cmd += std::to_string(mydemo.sensor_temp);
 	db_cmd += "'";
 	std::cout << db_cmd.c_str() << std::endl;
-	//system(db_cmd.c_str());
+	system(db_cmd.c_str());
 
 
 	// Humidity sensor
@@ -324,7 +363,7 @@ void sensor_write_db()
        	db_cmd += std::to_string(mydemo.sensor_humidity);
 	db_cmd += "'";
 	std::cout << db_cmd.c_str() << std::endl;
-	//system(db_cmd.c_str());
+	system(db_cmd.c_str());
 
 
 	// Light sensor
@@ -333,7 +372,15 @@ void sensor_write_db()
        	db_cmd += std::to_string(mydemo.sensor_light);
 	db_cmd += "'";
 	std::cout << db_cmd.c_str() << std::endl;
-	//system(db_cmd.c_str());
+	system(db_cmd.c_str());
+
+	// Sound sensor
+	db_cmd = url;
+	db_cmd += "'sound,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_sound);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	system(db_cmd.c_str());
 }
 
 // Callback handler on GET request
@@ -347,12 +394,12 @@ void onGetSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
 			rep.getValue("temperature", mydemo.sensor_temp);
 			rep.getValue("humidity", mydemo.sensor_humidity);
 			rep.getValue("light", mydemo.sensor_light);
-			rep.getValue("name", mydemo.m_name);
+			rep.getValue("sound", mydemo.sensor_sound);
 
 			std::cout << "\ttemperature: " << mydemo.sensor_temp << std::endl;
 			std::cout << "\thumidity: " << mydemo.sensor_humidity << std::endl;
 			std::cout << "\tlight: " << mydemo.sensor_light << std::endl;
-			std::cout << "\tname: " << mydemo.m_name << std::endl;
+			std::cout << "\tsound: " << mydemo.sensor_sound << std::endl;
 
 			sensor_write_db();
 			//putSensorRepresentation(sensorResource);
@@ -376,12 +423,10 @@ void onGetLed(const HeaderOptions& /*headerOptions*/, const OCRepresentation& re
 			rep.getValue("red", mydemo.led_red);
 			rep.getValue("green", mydemo.led_green);
 			rep.getValue("blue", mydemo.led_blue);
-			rep.getValue("name", mydemo.m_name);
 
 			std::cout << "\tred: " << mydemo.led_red << std::endl;
 			std::cout << "\tgreen: " << mydemo.led_green << std::endl;
 			std::cout << "\tblue: " << mydemo.led_blue << std::endl;
-			std::cout << "\tname: " << mydemo.m_name << std::endl;
 
 			//putLedRepresentation(ledResource);
 		} else {
@@ -435,7 +480,7 @@ void foundResource(std::shared_ptr<OCResource> resource)
 			std::cout<<"Found resource "<< resource->uniqueIdentifier() << " again!"<<std::endl;
 		}
 
-		if(sensorResource && ledResource && lcdResource) {
+		if(sensorResource && ledResource && lcdResource && buzzerResource) {
 			std::cout << "Found another resource, ignoring"<<std::endl;
 			return;
 		}
@@ -482,6 +527,14 @@ void foundResource(std::shared_ptr<OCResource> resource)
 				// Call a local function which will internally invoke get API on the resource pointer
 				//getLcdRepresentation(resource);
 			}
+
+			if(resourceURI == "/grovepi/buzzer") {
+				std::cout << "Find buzzer resource" << std::endl;
+				buzzerResource = resource;
+				// Call a local function which will internally invoke get API on the resource pointer
+				//getLcdRepresentation(resource);
+			}
+
 		} else {
 			// Resource is invalid
 			std::cout << "Resource is invalid" << std::endl;
@@ -562,12 +615,19 @@ static void lcd_write(std::string str)
 	putLcdRepresentation(lcdResource);
 }
 
+static void buzzer_write(double b)
+{
+	mydemo.buzzer = b;
+	putBuzzerRepresentation(buzzerResource);
+}
+
 static void print_menu()
 {
 	std::cout << "Demo client menu" << std::endl;
 	std::cout << "1 : read sensors" << std::endl;
 	std::cout << "2 : control LEDs" << std::endl;
 	std::cout << "3 : write string to LCD" << std::endl;
+	std::cout << "4 : Write buzzer" << std::endl;
 }
 
 static void print_menu_led()
@@ -584,6 +644,11 @@ static void print_menu_led()
 static void print_menu_lcd()
 {
 	std::cout << "Enter string" << std::endl;
+}
+
+static void print_menu_buzzer()
+{
+	std::cout << "Enter how long to beep" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -616,6 +681,7 @@ int main(int argc, char* argv[]) {
 		std::string sensor_rt = "?rt=grovepi.sensor";
 		std::string led_rt = "?rt=grovepi.led";
 		std::string lcd_rt = "?rt=grovepi.lcd";
+		std::string buzzer_rt = "?rt=grovepi.buzzer";
 
 		// makes it so that all boolean values are printed as 'true/false' in this stream
 		std::cout.setf(std::ios::boolalpha);
@@ -633,6 +699,11 @@ int main(int argc, char* argv[]) {
 		requestURI << OC_RSRVD_WELL_KNOWN_URI << lcd_rt;
 		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
 		std::cout<< "Finding LCD Resource... " <<std::endl;
+
+		requestURI.str("");
+		requestURI << OC_RSRVD_WELL_KNOWN_URI << buzzer_rt;
+		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+		std::cout<< "Finding Buzzer Resource... " <<std::endl;
 #if 0
 		// A condition variable will free the mutex it is given, then do a non-
 		// intensive block until 'notify' is called on it.  In this case, since we
@@ -647,6 +718,7 @@ int main(int argc, char* argv[]) {
 #if 1
 			int cmd, cmd1;
 			std::string str;
+			double buzz_time;
 			print_menu();
 			std::cin >> cmd;
 			switch(cmd) {
@@ -668,12 +740,17 @@ int main(int argc, char* argv[]) {
 					std::cin >> str;
 					lcd_write(str);
 					break;
+				case 4:
+					print_menu_buzzer();
+					std::cin >> buzz_time;
+					buzzer_write(buzz_time);
+					break;
 				default:
 					std::cout << "Unknown option: " << cmd << std::endl;
 			}
 #else
-		sensor_read();
-		sleep(1);
+			sensor_read();
+			sleep(3);
 #endif
 		}
 #endif

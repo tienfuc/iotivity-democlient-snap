@@ -49,6 +49,7 @@ public:
 	double sensor_temp;
 	double sensor_humidity;
 	int sensor_light;
+	int sensor_sound;
 	OCResourceHandle sensor_resourceHandle;
 	OCRepresentation sensor_rep;
 
@@ -62,6 +63,10 @@ public:
 	OCResourceHandle lcd_resourceHandle;
 	OCRepresentation lcd_rep;
 
+	double buzzer;
+	OCResourceHandle buzzer_resourceHandle;
+	OCRepresentation buzzer_rep;
+
 	ObservationIds m_interestedObservers;
 
 	std::string py_path = "../../../../../../extlibs/GrovePi/Software/Python";
@@ -69,9 +74,10 @@ public:
 public:
 	DemoResource()
 		:demo_name("Demo resource"), 
-		sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0),
+		sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), sensor_sound(0),
 		led_red(0), led_green(0), led_blue(0), 
 		lcd_str("LCD Demo"),
+		buzzer(0.0),
 		sensor_resourceHandle(nullptr), led_resourceHandle(nullptr), lcd_resourceHandle(nullptr)
 	{
 		// Initialize representation
@@ -79,6 +85,7 @@ public:
 		sensor_rep.setValue("temperature", sensor_temp);
 		sensor_rep.setValue("humidity", sensor_humidity);
 		sensor_rep.setValue("light", sensor_light);
+		sensor_rep.setValue("sound", sensor_sound);
 
 		led_rep.setUri("/grovepi/led");
 		led_rep.setValue("red", led_red);
@@ -87,6 +94,9 @@ public:
 
 		led_rep.setUri("/grovepi/lcd");
 		led_rep.setValue("lcd", lcd_str);
+
+		led_rep.setUri("/grovepi/buzzer");
+		led_rep.setValue("buzzer", buzzer);
 
 		setenv("PYTHONPATH", py_path.c_str(), 1);
 	}
@@ -114,6 +124,7 @@ public:
 		EntityHandler sensor_cb = std::bind(&DemoResource::sensor_entityHandler, this,PH::_1);
 		EntityHandler led_cb = std::bind(&DemoResource::led_entityHandler, this,PH::_1);
 		EntityHandler lcd_cb = std::bind(&DemoResource::lcd_entityHandler, this,PH::_1);
+		EntityHandler buzzer_cb = std::bind(&DemoResource::buzzer_entityHandler, this,PH::_1);
 
 		// This will internally create and register the resource.
 		OCStackResult result = OCPlatform::registerResource(
@@ -142,6 +153,16 @@ public:
 
 		if (OC_STACK_OK != result)
 			cout << "LCD resource creation was unsuccessful\n";
+
+		// Create Buzzer resource
+		resourceURI = "/grovepi/buzzer";
+		resourceTypeName = "grovepi.buzzer";
+		result = OCPlatform::registerResource(
+			buzzer_resourceHandle, resourceURI, resourceTypeName,
+			resourceInterface, buzzer_cb, resourceProperty);
+
+		if (OC_STACK_OK != result)
+			cout << "Buzzer resource creation was unsuccessful\n";
 	}
 
 	void py_prolog(PyObject **filename, PyObject **module, PyObject **dict, PyObject **func, char *func_name)
@@ -214,6 +235,27 @@ public:
 		return p_result;
 	}
 
+	PyObject* py_func(char *func_name, double value)
+	{
+		PyObject *p_filename, *p_module, *p_dict, *p_func, *p_value, *p_result = NULL;
+
+		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
+	
+		if(PyCallable_Check(p_func)) {
+			std::cout << "Access grovepi library" << std::endl;
+			p_value = Py_BuildValue("(d)", value);
+			p_result = PyObject_CallObject(p_func, p_value);
+			PyErr_Print();
+		} else {
+			std::cout << "Can not access Grovepi library" << std::endl;
+			PyErr_Print();
+		}
+
+		py_epilog(&p_filename, &p_module, &p_dict, &p_func);
+
+		return p_result;
+	}
+
 	PyObject* py_func(char *func_name, const char *str)
 	{
 		PyObject *p_filename, *p_module, *p_dict, *p_func, *p_value, *p_result = NULL;
@@ -270,6 +312,18 @@ public:
 			return -1;
 	}
 
+	int sensor_read_sound()
+	{
+		PyObject *p_result;
+
+		p_result = py_func((char *)"sensor_read_sound");
+
+		if(p_result)
+			return PyInt_AsLong(p_result);
+		else
+			return -1;
+	}
+
 	int led_write_red(int status)
 	{
 		PyObject *p_result;
@@ -318,6 +372,18 @@ public:
 			return -1;
 	}
 
+	int buzzer_write(double value)
+	{
+		PyObject *p_result;
+
+		p_result = py_func((char *)"buzzer_write", value);
+
+		if(p_result)
+			return 0;
+		else
+			return -1;
+	}
+
 	OCResourceHandle getHandle()
 	{
 		return sensor_resourceHandle;
@@ -332,17 +398,22 @@ public:
 			if (rep.getValue("temperature", sensor_temp))
 				cout << "\t\t\t\t" << "temperature: " << sensor_temp << endl;
 			else
-				cout << "\t\t\t\t" << "state not found in the representation" << endl;
+				cout << "\t\t\t\t" << "temperature not found in the representation" << endl;
 
 			if (rep.getValue("humidity", sensor_humidity))
 				cout << "\t\t\t\t" << "humidity: " << sensor_humidity << endl;
 			else
-				cout << "\t\t\t\t" << "power not found in the representation" << endl;
+				cout << "\t\t\t\t" << "humidity not found in the representation" << endl;
 
 			if (rep.getValue("light", sensor_light))
 				cout << "\t\t\t\t" << "light: " << sensor_light << endl;
 			else
-				cout << "\t\t\t\t" << "power not found in the representation" << endl;
+				cout << "\t\t\t\t" << "light not found in the representation" << endl;
+
+			if (rep.getValue("sound", sensor_sound))
+				cout << "\t\t\t\t" << "sound: " << sensor_sound << endl;
+			else
+				cout << "\t\t\t\t" << "sound not found in the representation" << endl;
 		} 
 		catch (exception& e) {
 			cout << e.what() << endl;
@@ -353,21 +424,21 @@ public:
 	{
 		try {
 			if (rep.getValue("red", led_red)) {
-				//cout << "\t\t\t\t" << "Red LED: " << led_red << endl;
+				cout << "\t\t\t\t" << "Red LED: " << led_red << endl;
 				led_write_red(led_red);
 			} else {
 				cout << "\t\t\t\t" << "red not found in the representation" << endl;
 			}
 
 			if (rep.getValue("green", led_green)) {
-				//cout << "\t\t\t\t" << "Green LED: " << led_green << endl;
+				cout << "\t\t\t\t" << "Green LED: " << led_green << endl;
 				led_write_green(led_green);
 			} else {
 				cout << "\t\t\t\t" << "green not found in the representation" << endl;
 			}
 
 			if (rep.getValue("blue", led_blue)) {
-				//cout << "\t\t\t\t" << "Blue LED: " << led_blue << endl;
+				cout << "\t\t\t\t" << "Blue LED: " << led_blue << endl;
 				led_write_blue(led_blue);
 			} else {
 				cout << "\t\t\t\t" << "blue not found in the representation" << endl;
@@ -386,6 +457,21 @@ public:
 				lcd_write_str(lcd_str.c_str());
 			} else {
 				cout << "\t\t\t\t" << "LCD string not found in the representation" << endl;
+			}
+		}
+		catch (exception& e) {
+			cout << e.what() << endl;
+		}
+	}
+
+	void put_buzzer(OCRepresentation& rep)
+	{
+		try {
+			if(rep.getValue("buzzer", buzzer)) {
+				cout << "\t\t\t\t" << "Buzzer: " << buzzer << endl;
+				buzzer_write(buzzer);
+			} else {
+				cout << "\t\t\t\t" << "buzzer not found in the representation" << endl;
 			}
 		}
 		catch (exception& e) {
@@ -429,10 +515,12 @@ public:
 		sensor_temp = sensor_read_temp();
 		sensor_humidity = sensor_read_humidity();
 		sensor_light = sensor_read_light();
+		sensor_sound = sensor_read_sound();
 
 		sensor_rep.setValue("temperature", sensor_temp);
 		sensor_rep.setValue("humidity", sensor_humidity);
 		sensor_rep.setValue("light", sensor_light);
+		sensor_rep.setValue("sound", sensor_sound);
 		return sensor_rep;
 	}
 
@@ -444,16 +532,21 @@ public:
 		led_green = led_read_green();
 		led_blue = led_read_blue();
 #endif
-
 		led_rep.setValue("red", led_red);
 		led_rep.setValue("green", led_green);
 		led_rep.setValue("blue", led_blue);
-		return lcd_rep;
+		return led_rep;
 	}
 
 	OCRepresentation get_lcd()
 	{
 		lcd_rep.setValue("lcd", lcd_str);
+		return lcd_rep;
+	}
+
+	OCRepresentation get_buzzer()
+	{
+		lcd_rep.setValue("buzzer", buzzer);
 		return lcd_rep;
 	}
 
@@ -772,6 +865,117 @@ private:
 		return ehResult;
 	}
 
+	OCEntityHandlerResult buzzer_entityHandler(std::shared_ptr<OCResourceRequest> request)
+	{
+		cout << "\tIn Server CPP entity handler:\n";
+		OCEntityHandlerResult ehResult = OC_EH_ERROR;
+
+		if(request) {
+			// Get the request type and request flag
+			std::string requestType = request->getRequestType();
+			int requestFlag = request->getRequestHandlerFlag();
+
+			if(requestFlag & RequestHandlerFlag::RequestFlag) {
+				cout << "\t\trequestFlag : Request\n";
+				auto pResponse = std::make_shared<OC::OCResourceResponse>();
+				pResponse->setRequestHandle(request->getRequestHandle());
+				pResponse->setResourceHandle(request->getResourceHandle());
+
+				// Check for query params (if any)
+				QueryParamsMap queries = request->getQueryParameters();
+
+				if (!queries.empty()) {
+					std::cout << "\nQuery processing upto entityHandler" << std::endl;
+				}
+
+				for (auto it : queries) {
+					std::cout << "Query key: " << it.first << " value : " << it.second << std:: endl;
+				}
+
+				if(requestType == "GET") {
+					cout << "\t\t\trequestType : GET\n";
+#if 0
+					pResponse->setErrorCode(200);
+					pResponse->setResponseResult(OC_EH_OK);
+					pResponse->setResourceRepresentation(get_lcd());
+					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse)) {
+						ehResult = OC_EH_OK;
+					}
+#endif
+				} else if(requestType == "PUT") {
+					cout << "\t\t\trequestType : PUT\n";
+					OCRepresentation rep = request->getResourceRepresentation();
+
+					// Do related operations related to PUT request
+					// Update the lightResource
+					put_buzzer(rep);
+					pResponse->setErrorCode(200);
+					pResponse->setResponseResult(OC_EH_OK);
+					pResponse->setResourceRepresentation(get_buzzer());
+					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse)) {
+						ehResult = OC_EH_OK;
+					}
+				} else if(requestType == "POST") {
+					cout << "\t\t\trequestType : POST\n";
+#if 0
+					OCRepresentation rep = request->getResourceRepresentation();
+
+					// Do related operations related to POST request
+					OCRepresentation rep_post = post(rep);
+					pResponse->setResourceRepresentation(rep_post);
+					pResponse->setErrorCode(200);
+					if(rep_post.hasAttribute("createduri")) {
+						pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
+						pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
+					} else {
+						pResponse->setResponseResult(OC_EH_OK);
+					}
+
+					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
+						ehResult = OC_EH_OK;
+#endif
+				} else if(requestType == "DELETE") {
+					cout << "Delete request received" << endl;
+				}
+			}
+
+			if(requestFlag & RequestHandlerFlag::ObserverFlag) {
+				ObservationInfo observationInfo = request->getObservationInfo();
+
+				if(ObserveAction::ObserveRegister == observationInfo.action) {
+					m_interestedObservers.push_back(observationInfo.obsId);
+				} else if(ObserveAction::ObserveUnregister == observationInfo.action) {
+					m_interestedObservers.erase(std::remove(
+							m_interestedObservers.begin(),
+							m_interestedObservers.end(),
+							observationInfo.obsId),
+							m_interestedObservers.end());
+				}
+
+#if 0
+				pthread_t threadId;
+
+				cout << "\t\trequestFlag : Observer\n";
+				gObservation = 1;
+				static int startedThread = 0;
+
+				// Observation happens on a different thread in ChangeLightRepresentation function.
+				// If we have not created the thread already, we will create one here.
+
+				if(!startedThread) {
+					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
+					startedThread = 1;
+				}
+#endif
+				ehResult = OC_EH_OK;
+			}
+		} else {
+			std::cout << "Request invalid" << std::endl;
+		}
+
+		return ehResult;
+	}
+
 };
 
 
@@ -917,7 +1121,7 @@ int main(int argc, char* argv[])
 					return -1;
 				}
 				host_str = ifa->ifa_name;
-				host_str += " IPv7 addr: ";
+				host_str += " IPv4: ";
 				host_str += host_ip;
 				std::cout << host_str << std::endl;
 			} else if(ifa->ifa_addr->sa_family == AF_INET6) {
@@ -929,7 +1133,7 @@ int main(int argc, char* argv[])
 					return -1;
 				}
 				host_str = ifa->ifa_name;
-				host_str += " IPv6 addr: ";
+				host_str += " IPv6: ";
 				host_str += host_ip;
 				std::cout << host_str << std::endl;
 			}
