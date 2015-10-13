@@ -123,10 +123,10 @@ void sensor_write_db()
 	}
 }
 
-void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& rep,
+void onObserveButton(const HeaderOptions /*headerOptions*/, const OCRepresentation& rep,
                     const int& eCode, const int& sequenceNumber)
 {
-	std::cout << "onObserve" << std::endl;
+	std::cout << "onObserveButton" << std::endl;
 	try {
 		if(eCode == OC_STACK_OK && sequenceNumber != OC_OBSERVE_NO_OPTION) {
 			if(sequenceNumber == OC_OBSERVE_REGISTER)
@@ -143,13 +143,13 @@ void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& re
 				std::cout << "Observe registration or de-registration action is failed" 
 					<< std::endl;
 			} else {
-				std::cout << "onObserve Response error: " << eCode << std::endl;
+				std::cout << "onObserveButton Response error: " << eCode << std::endl;
 				std::exit(-1);
 			}
 		}
 	}
 	catch(std::exception& e) {
-		std::cout << "Exception: " << e.what() << " in onObserve" << std::endl;
+		std::cout << "Exception: " << e.what() << " in onObserveButton" << std::endl;
 	}
 }
 
@@ -603,7 +603,7 @@ static void led_write(int led)
 			mydemo.led_blue = 0;
 			break;
 	}
-	
+
 	putLedRepresentation(ledResource);
 }
 
@@ -621,16 +621,16 @@ static void buzzer_write(double b)
 
 static void button_register(int cmd)
 {
-	if(cmd)
-		buttonResource->observe(observe_type, QueryParamsMap(), &onObserve);
-	else
+	if(cmd == 1)
+		buttonResource->observe(observe_type, QueryParamsMap(), &onObserveButton);
+	else if(cmd == 2)
 		buttonResource->cancelObserve();
-
 }
 
 static void print_menu()
 {
 	std::cout << "Demo client menu" << std::endl;
+	std::cout << "0 : Print this menu" << std::endl;
 	std::cout << "1 : Read sensors" << std::endl;
 	std::cout << "2 : Control LEDs" << std::endl;
 	std::cout << "3 : Write string to LCD" << std::endl;
@@ -692,46 +692,65 @@ int main(int argc, char* argv[]) {
 	OCPlatform::Configure(cfg);
 	std::cout << "done" << std::endl;
 
-	try {
-		std::string sensor_rt = "?rt=grovepi.sensor";
-		std::string led_rt = "?rt=grovepi.led";
-		std::string lcd_rt = "?rt=grovepi.lcd";
-		std::string buzzer_rt = "?rt=grovepi.buzzer";
-		std::string button_rt = "?rt=grovepi.button";
+	try 
+	{
+		while(!sensorResource || !ledResource || !lcdResource || !buzzerResource || !buttonResource) {
+			std::string sensor_rt = "?rt=grovepi.sensor";
+			std::string led_rt = "?rt=grovepi.led";
+			std::string lcd_rt = "?rt=grovepi.lcd";
+			std::string buzzer_rt = "?rt=grovepi.buzzer";
+			std::string button_rt = "?rt=grovepi.button";
 
-		// Find all resources
-		requestURI << OC_RSRVD_WELL_KNOWN_URI << sensor_rt;
-		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
-		std::cout<< "Finding Sensor Resource... " <<std::endl;
+			// Find all resources
+			if(!sensorResource) {
+				requestURI.str("");
+				requestURI << OC_RSRVD_WELL_KNOWN_URI << sensor_rt;
+				OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+				std::cout<< "Finding Sensor Resource... " <<std::endl;
+			}
 
-		requestURI.str("");
-		requestURI << OC_RSRVD_WELL_KNOWN_URI << led_rt;
-		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
-		std::cout<< "Finding LED Resource... " <<std::endl;
+			if(!ledResource) {
+				requestURI.str("");
+				requestURI << OC_RSRVD_WELL_KNOWN_URI << led_rt;
+				OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+				std::cout<< "Finding LED Resource... " <<std::endl;
+			}
 
-		requestURI.str("");
-		requestURI << OC_RSRVD_WELL_KNOWN_URI << lcd_rt;
-		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
-		std::cout<< "Finding LCD Resource... " <<std::endl;
+			if(!lcdResource) {
+				requestURI.str("");
+				requestURI << OC_RSRVD_WELL_KNOWN_URI << lcd_rt;
+				OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+				std::cout<< "Finding LCD Resource... " <<std::endl;
+			}
 
-		requestURI.str("");
-		requestURI << OC_RSRVD_WELL_KNOWN_URI << buzzer_rt;
-		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
-		std::cout<< "Finding Buzzer Resource... " <<std::endl;
+			if(!buzzerResource) {
+				requestURI.str("");
+				requestURI << OC_RSRVD_WELL_KNOWN_URI << buzzer_rt;
+				OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+				std::cout<< "Finding Buzzer Resource... " <<std::endl;
+			}
 
-		requestURI.str("");
-		requestURI << OC_RSRVD_WELL_KNOWN_URI << button_rt;
-		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
-		std::cout<< "Finding Button Resource... " <<std::endl;
+			if(!buttonResource) {
+				requestURI.str("");
+				requestURI << OC_RSRVD_WELL_KNOWN_URI << button_rt;
+				OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
+				std::cout<< "Finding Button Resource... " <<std::endl;
+			}
+
+			sleep(5);
+		}
+
 
 		while(true) {
-#if 1
+#if 0
 			int cmd, cmd1;
 			std::string str;
 			double buzz_time;
 			print_menu();
 			std::cin >> cmd;
 			switch(cmd) {
+				case 0:
+					break;
 				case 1:
 					sensor_read();
 					break;
@@ -758,20 +777,48 @@ int main(int argc, char* argv[]) {
 				case 5:
 					print_menu_button();
 					std::cin >> cmd1;
-					button_register(cmd1);
+					if(cmd1 != 1 && cmd1 != 2)
+						std::cout << "Unknown option: " << cmd1 << std::endl;
+					else
+						button_register(cmd1);
 					break;
 				default:
 					std::cout << "Unknown option: " << cmd << std::endl;
 			}
 #else
+
 			sensor_read();
 			sleep(3);
+#if 0
+			double curr_light = mydemo.sensor_light;
+			double curr_temp = mydemo.sensor_temp;
+
+			if(mydemo.sensor_light < 550 && curr_light >= 550) {
+				led_write(3);
+				curr_light = mydemo.sensor_light;
+			} else if(mydemo.sensor_light >= 550 && curr_light < 550) {
+				led_write(6);
+				curr_light = mydemo.sensor_light;
+			}
+
+			if(mydemo.sensor_temp < 25 && curr_temp >= 25) {
+				mydemo.led_red = 0;
+				mydemo.led_green = 1;
+				putLedRepresentation(ledResource);
+				curr_temp = mydemo.sensor_temp;
+			} else if(mydemo.sensor_temp >= 25 && curr_temp < 25) {
+				mydemo.led_red = 1;
+				mydemo.led_green = 0;
+				putLedRepresentation(ledResource);
+				curr_temp = mydemo.sensor_temp;
+			}
+#endif
 #endif
 		}
 	}
-	catch(OCException& e) {
+	catch(OCException& e) 
+	{
 		oclog() << "Exception in main: "<<e.what();
 	}
-
 	return 0;
 }

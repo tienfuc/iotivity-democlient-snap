@@ -19,7 +19,7 @@ using namespace std;
 namespace PH = std::placeholders;
 
 int gObservation = 0;
-void * ChangeDemoRepresentation (void *param);
+void * CheckButtonRepresentation (void *param);
 void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequest);
 
 // Specifies where to notify all observers or list of observers
@@ -73,7 +73,7 @@ public:
 
 	ObservationIds m_interestedObservers;
 
-	std::string py_path = "/home/u/demo/iotivity/extlibs/GrovePi/Software/Python";
+	//std::string py_path = "/home/u/demo/iotivity/extlibs/GrovePi/Software/Python";
 
 public:
 	DemoResource()
@@ -107,7 +107,7 @@ public:
 		led_rep.setUri("/grovepi/button");
 		led_rep.setValue("button", button);
 
-		setenv("PYTHONPATH", py_path.c_str(), 1);
+		//setenv("PYTHONPATH", py_path.c_str(), 1);
 	}
 
 	/* Note that this does not need to be a member function: for classes you do not have
@@ -656,23 +656,6 @@ private:
 							observationInfo.obsId),
 							m_interestedObservers.end());
 				}
-
-#if 0
-				pthread_t threadId;
-
-				cout << "\t\trequestFlag : Observer\n";
-
-				gObservation = 1;
-				static int startedThread = 0;
-
-				// Observation happens on a different thread in ChangeLightRepresentation function.
-				// If we have not created the thread already, we will create one here.
-				if(!startedThread) {
-					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
-					startedThread = 1;
-				}
-#endif
-				ehResult = OC_EH_OK;
 			}
 		} else {
 			std::cout << "Request invalid" << std::endl;
@@ -765,23 +748,6 @@ private:
 							observationInfo.obsId),
 							m_interestedObservers.end());
 				}
-
-#if 0
-				pthread_t threadId;
-
-				cout << "\t\trequestFlag : Observer\n";
-				gObservation = 1;
-				static int startedThread = 0;
-
-				// Observation happens on a different thread in ChangeLightRepresentation function.
-				// If we have not created the thread already, we will create one here.
-
-				if(!startedThread) {
-					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
-					startedThread = 1;
-				}
-#endif
-				ehResult = OC_EH_OK;
 			}
 		} else {
 			std::cout << "Request invalid" << std::endl;
@@ -874,23 +840,6 @@ private:
 							observationInfo.obsId),
 							m_interestedObservers.end());
 				}
-
-#if 0
-				pthread_t threadId;
-
-				cout << "\t\trequestFlag : Observer\n";
-				gObservation = 1;
-				static int startedThread = 0;
-
-				// Observation happens on a different thread in ChangeLightRepresentation function.
-				// If we have not created the thread already, we will create one here.
-
-				if(!startedThread) {
-					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
-					startedThread = 1;
-				}
-#endif
-				ehResult = OC_EH_OK;
 			}
 		} else {
 			std::cout << "Request invalid" << std::endl;
@@ -985,23 +934,6 @@ private:
 							observationInfo.obsId),
 							m_interestedObservers.end());
 				}
-
-#if 0
-				pthread_t threadId;
-
-				cout << "\t\trequestFlag : Observer\n";
-				gObservation = 1;
-				static int startedThread = 0;
-
-				// Observation happens on a different thread in ChangeLightRepresentation function.
-				// If we have not created the thread already, we will create one here.
-
-				if(!startedThread) {
-					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
-					startedThread = 1;
-				}
-#endif
-				ehResult = OC_EH_OK;
 			}
 		} else {
 			std::cout << "Request invalid" << std::endl;
@@ -1097,38 +1029,21 @@ private:
 							m_interestedObservers.end());
 				}
 
-				//pthread_t threadId;
+				pthread_t threadId;
 
 				cout << "\t\trequestFlag : Observer\n";
 				gObservation = 1;
 
-#if 0
 				static int startedThread = 0;
 
-				// Observation happens on a different thread in ChangeLightRepresentation function.
+				// Start a thread to check button status
 				// If we have not created the thread already, we will create one here.
 
 				if(!startedThread) {
-					pthread_create (&threadId, NULL, ChangeDemoRepresentation, (void *)this);
+					pthread_create (&threadId, NULL, CheckButtonRepresentation, (void *)this);
 					startedThread = 1;
 				}
-#endif
 				ehResult = OC_EH_OK;
-
-#if 0
-				sleep(5);
-				
-
-				OCStackResult result = OC_STACK_OK;
-				button = 10;
-				button_rep.setValue("button", button);
-				result = OCPlatform::notifyAllObservers(button_resourceHandle);
-
-				if(OC_STACK_NO_OBSERVERS == result) {
-					cout << "No More observers, stopping notifications" << endl;
-					gObservation = 0;
-				}
-#endif
 			}
 		} else {
 			std::cout << "Request invalid" << std::endl;
@@ -1141,50 +1056,57 @@ private:
 
 
 
-// ChangeLightRepresentaion is an observation function,
+// CheckButtonRepresentaion is an observation function,
 // which notifies any changes to the resource to stack
-// via notifyObservers
-void * ChangeDemoRepresentation (void *param)
+// via notifyObservers if button is pressed or released
+void * CheckButtonRepresentation (void *param)
 {
-	DemoResource* demoPtr = (DemoResource*) param;
+	DemoResource *pdemo = (DemoResource*) param;
+	int status;
 
-#if 0
 	// This function continuously monitors for the changes
 	while (1) {
-		sleep (3);
+		sleep (2);
 
 		if (gObservation) {
-			// If under observation if there are any changes to the light resource
+			// If under observation if there are any changes to the button resource
 			// we call notifyObservors
-			//
-			// For demostration we are changing the power value and notifying.
-			demoPtr->m_humidity += 10;
-
-			cout << "\nHumidity updated to : " << demoPtr->m_humidity << endl;
-			cout << "Notifying observers with resource handle: " << demoPtr->getHandle() << endl;
-
-			OCStackResult result = OC_STACK_OK;
-
-			if(isListOfObservers) {
-				std::shared_ptr<OCResourceResponse> resourceResponse =
-					{std::make_shared<OCResourceResponse>()};
-
-				resourceResponse->setErrorCode(200);
-				resourceResponse->setResourceRepresentation(demoPtr->get(), DEFAULT_INTERFACE);
-
-				result = OCPlatform::notifyListOfObservers(  demoPtr->getHandle(),
-					demoPtr->m_interestedObservers, resourceResponse);
-			} else {
-				result = OCPlatform::notifyAllObservers(demoPtr->getHandle());
+			
+			status = pdemo->button_read();
+			if(status == -1) {
+				cout << "Button status read failed" << endl;
 			}
 
-			if(OC_STACK_NO_OBSERVERS == result) {
-				cout << "No More observers, stopping notifications" << endl;
-				gObservation = 0;
+			cout << "\nButton status: " << status << endl;
+			cout << "Current button status: " << pdemo->button << endl;
+
+			if(pdemo->button != status) {
+				pdemo->button = status;
+				cout << "Notifying observers with resource handle: " << pdemo->button_resourceHandle << endl;
+
+				OCStackResult result = OC_STACK_OK;
+
+				if(isListOfObservers) {
+					std::shared_ptr<OCResourceResponse> resourceResponse =
+						{std::make_shared<OCResourceResponse>()};
+
+					resourceResponse->setErrorCode(200);
+					resourceResponse->setResourceRepresentation(pdemo->get_button(), DEFAULT_INTERFACE);
+
+					result = OCPlatform::notifyListOfObservers(pdemo->button_resourceHandle,
+						pdemo->m_interestedObservers, resourceResponse);
+				} else {
+					result = OCPlatform::notifyAllObservers(pdemo->button_resourceHandle);
+				}
+
+				if(OC_STACK_NO_OBSERVERS == result) {
+					cout << "No More observers, stopping notifications" << endl;
+					gObservation = 0;
+				}
 			}
 		}
 	}
-#endif
+
 	return NULL;
 }
 
@@ -1285,6 +1207,7 @@ int main(int argc, char* argv[])
 				host_str = "IPv4: ";
 				host_str += host_ip;
 				std::cout << host_str << std::endl;
+				break;
 			} else if(ifa->ifa_addr->sa_family == AF_INET6) {
 				s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), host_ip,
 					NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
