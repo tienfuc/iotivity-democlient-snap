@@ -58,24 +58,69 @@ public:
 	double buzzer;
 	int button;
 
-	std::string m_name;
-
 	Demo() : sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), sensor_sound(0),
 		led_red(0), led_green(0), led_blue(0),
 	  	lcd_str("LCD Demo"),
 		buzzer(0.0),
-		button(0),
-		m_name("")
+		button(0)
 	{
 	}
 };
 
 Demo mydemo;
 
-int observe_count()
+void sensor_write_db()
 {
-	static int oc = 0;
-	return ++oc;
+	std::string db_cmd;
+	std::string url;
+       
+	url = "curl -i -XPOST 'http://";
+	url += mydemo.influxdb_ip;
+	url += "/write?db=fukuoka' --data-binary ";
+
+	// Temperature sensor
+	db_cmd = url;
+	db_cmd += "'temperature,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_temp);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	if(system(db_cmd.c_str()) == -1) {
+		std::cout << "System command failed:" << std::endl;
+		std::cout << db_cmd << std::endl;
+	}
+
+	// Humidity sensor
+	db_cmd = url;
+	db_cmd += "'humidity,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_humidity);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	if(system(db_cmd.c_str()) == -1) {
+		std::cout << "System command failed:" << std::endl;
+		std::cout << db_cmd << std::endl;
+	}
+
+	// Light sensor
+	db_cmd = url;
+	db_cmd += "'light,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_light);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	if(system(db_cmd.c_str()) == -1) {
+		std::cout << "System command failed:" << std::endl;
+		std::cout << db_cmd << std::endl;
+	}
+
+	// Sound sensor
+	db_cmd = url;
+	db_cmd += "'sound,sensor=1 value=";
+       	db_cmd += std::to_string(mydemo.sensor_sound);
+	db_cmd += "'";
+	std::cout << db_cmd.c_str() << std::endl;
+	if(system(db_cmd.c_str()) == -1) {
+		std::cout << "System command failed:" << std::endl;
+		std::cout << db_cmd << std::endl;
+	}
 }
 
 void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& rep,
@@ -93,16 +138,6 @@ void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& re
 			std::cout << "\tSequenceNumber: "<< sequenceNumber << std::endl;
 			rep.getValue("button", mydemo.button);
 			std::cout << "button: " << mydemo.button << std::endl;
-
-			if(observe_count() == 11) {
-				std::cout<<"Cancelling Observe..."<<std::endl;
-				//OCStackResult result = curResource->cancelObserve();
-
-				//std::cout << "Cancel result: "<< result <<std::endl;
-				sleep(10);
-				std::cout << "DONE"<<std::endl;
-				std::exit(0);
-			}
 		} else {
 			if(sequenceNumber == OC_OBSERVE_NO_OPTION) {
 				std::cout << "Observe registration or de-registration action is failed" 
@@ -116,12 +151,12 @@ void onObserve(const HeaderOptions /*headerOptions*/, const OCRepresentation& re
 	catch(std::exception& e) {
 		std::cout << "Exception: " << e.what() << " in onObserve" << std::endl;
 	}
-
 }
 
 void onPost(const HeaderOptions& /*headerOptions*/,
         const OCRepresentation& rep, const int eCode)
 {
+#if 0
 	try {
 		if(eCode == OC_STACK_OK || eCode == OC_STACK_RESOURCE_CREATED) {
 			std::cout << "POST request was successful" << std::endl;
@@ -130,7 +165,6 @@ void onPost(const HeaderOptions& /*headerOptions*/,
 				std::cout << "\tUri of the created resource: "
 					<< rep.getValue<std::string>("createduri") << std::endl;
 			} else {
-#if 0
 				rep.getValue("temperature", mydemo.m_temp);
 				rep.getValue("humidity", mydemo.m_humidity);
 				rep.getValue("name", mydemo.m_name);
@@ -138,21 +172,18 @@ void onPost(const HeaderOptions& /*headerOptions*/,
 				std::cout << "\ttemperature: " << mydemo.m_temp << std::endl;
 				std::cout << "\thumidity: " << mydemo.m_humidity << std::endl;
 				std::cout << "\tname: " << mydemo.m_name << std::endl;
-#endif
 			}
 
 			OCRepresentation rep2;
 
 			std::cout << "Posting light representation..."<<std::endl;
 
-#if 0
 			mydemo.m_temp = 1; 
 			mydemo.m_humidity = 2;
 
 			rep2.setValue("temperature", mydemo.m_temp);
 			rep2.setValue("humidity", mydemo.m_humidity);
 			curResource->post(rep2, QueryParamsMap(), &onPost2);
-#endif
 		} else {
 			std::cout << "onPost Response error: " << eCode << std::endl;
 			std::exit(-1);
@@ -161,26 +192,27 @@ void onPost(const HeaderOptions& /*headerOptions*/,
 	catch(std::exception& e) {
 		std::cout << "Exception: " << e.what() << " in onPost" << std::endl;
 	}
+#endif
 }
 
 // Local function to put a different state for this resource
 void postDemoRepresentation(std::shared_ptr<OCResource> resource)
 {
+#if 0
 	if(resource) {
 		OCRepresentation rep;
 
 		std::cout << "Posting light representation..."<<std::endl;
 
-#if 0
 		mydemo.m_temp = 5;
 		mydemo.m_humidity = 6;
 
 		rep.setValue("temperature", mydemo.m_temp);
 		rep.setValue("humidity", mydemo.m_humidity);
-#endif
 		// Invoke resource's post API with rep, query map and the callback parameter
 		resource->post(rep, QueryParamsMap(), &onPost);
 	}
+#endif
 }
 
 // callback handler on PUT request
@@ -271,28 +303,6 @@ void onPutBuzzer(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
 }
 
 // Local function to put a different state for this resource
-void putSensorRepresentation(std::shared_ptr<OCResource> resource)
-{
-#if 0
-	if(resource) {
-		OCRepresentation rep;
-
-		std::cout << "Putting sensor representation..."<<std::endl;
-
-		mydemo.sensor_temp = 20;
-		mydemo.sensor_humidity = 40;
-		mydemo.sensor_light = 50;
-
-		rep.setValue("temperature", mydemo.sensor_temp);
-		rep.setValue("humidity", mydemo.sensor_humidity);
-		rep.setValue("light", mydemo.sensor_light);
-
-		// Invoke resource's put API with rep, query map and the callback parameter
-		resource->put(rep, QueryParamsMap(), &onPutSensor);
-	}
-#endif
-}
-
 void putLedRepresentation(std::shared_ptr<OCResource> resource)
 {
 	if(resource) {
@@ -337,50 +347,6 @@ void putBuzzerRepresentation(std::shared_ptr<OCResource> resource)
 	}
 }
 
-void sensor_write_db()
-{
-	std::string db_cmd;
-	std::string url;
-       
-	url = "curl -i -XPOST 'http://";
-	url += mydemo.influxdb_ip;
-	url += "/write?db=fukuoka' --data-binary ";
-
-	// Temperature sensor
-	db_cmd = url;
-	db_cmd += "'temperature,sensor=1 value=";
-       	db_cmd += std::to_string(mydemo.sensor_temp);
-	db_cmd += "'";
-	std::cout << db_cmd.c_str() << std::endl;
-	system(db_cmd.c_str());
-
-
-	// Humidity sensor
-	db_cmd = url;
-	db_cmd += "'humidity,sensor=1 value=";
-       	db_cmd += std::to_string(mydemo.sensor_humidity);
-	db_cmd += "'";
-	std::cout << db_cmd.c_str() << std::endl;
-	system(db_cmd.c_str());
-
-
-	// Light sensor
-	db_cmd = url;
-	db_cmd += "'light,sensor=1 value=";
-       	db_cmd += std::to_string(mydemo.sensor_light);
-	db_cmd += "'";
-	std::cout << db_cmd.c_str() << std::endl;
-	system(db_cmd.c_str());
-
-	// Sound sensor
-	db_cmd = url;
-	db_cmd += "'sound,sensor=1 value=";
-       	db_cmd += std::to_string(mydemo.sensor_sound);
-	db_cmd += "'";
-	std::cout << db_cmd.c_str() << std::endl;
-	system(db_cmd.c_str());
-}
-
 // Callback handler on GET request
 void onGetSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, const int eCode)
 {
@@ -400,7 +366,6 @@ void onGetSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
 			std::cout << "\tsound: " << mydemo.sensor_sound << std::endl;
 
 			sensor_write_db();
-			//putSensorRepresentation(sensorResource);
 		} else {
 			std::cout << "onGET Response error: " << eCode << std::endl;
 			std::exit(-1);
@@ -425,8 +390,6 @@ void onGetLed(const HeaderOptions& /*headerOptions*/, const OCRepresentation& re
 			std::cout << "\tred: " << mydemo.led_red << std::endl;
 			std::cout << "\tgreen: " << mydemo.led_green << std::endl;
 			std::cout << "\tblue: " << mydemo.led_blue << std::endl;
-
-			//putLedRepresentation(ledResource);
 		} else {
 			std::cout << "onGET Response error: " << eCode << std::endl;
 			std::exit(-1);
@@ -447,8 +410,6 @@ void onGetButton(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
 			rep.getValue("button", mydemo.button);
 
 			std::cout << "\tbutton: " << mydemo.button << std::endl;
-
-			//putLedRepresentation(ledResource);
 		} else {
 			std::cout << "onGET Response error: " << eCode << std::endl;
 			std::exit(-1);
@@ -465,8 +426,8 @@ void getSensorRepresentation(std::shared_ptr<OCResource> resource)
 {
 	if(resource) {
 		std::cout << "Getting Sensor Representation..."<<std::endl;
-		// Invoke resource's get API with the callback parameter
 
+		// Invoke resource's get API with the callback parameter
 		QueryParamsMap test;
 		resource->get(test, &onGetSensor);
 	}
@@ -476,8 +437,8 @@ void getLedRepresentation(std::shared_ptr<OCResource> resource)
 {
 	if(resource) {
 		std::cout << "Getting LED Representation..."<<std::endl;
-		// Invoke resource's get API with the callback parameter
 
+		// Invoke resource's get API with the callback parameter
 		QueryParamsMap test;
 		resource->get(test, &onGetLed);
 	}
@@ -487,8 +448,8 @@ void getButtonRepresentation(std::shared_ptr<OCResource> resource)
 {
 	if(resource) {
 		std::cout << "Getting Button Representation..."<<std::endl;
-		// Invoke resource's get API with the callback parameter
 
+		// Invoke resource's get API with the callback parameter
 		QueryParamsMap test;
 		resource->get(test, &onGetButton);
 	}
@@ -500,6 +461,7 @@ void foundResource(std::shared_ptr<OCResource> resource)
 	std::cout << "In foundResource\n";
 	std::string resourceURI;
 	std::string hostAddress;
+
 	try {
 		std::lock_guard<std::mutex> lock(curResourceLock);
 
@@ -510,11 +472,6 @@ void foundResource(std::shared_ptr<OCResource> resource)
 			discoveredResources[resource->uniqueIdentifier()] = resource;
 		} else {
 			std::cout<<"Found resource "<< resource->uniqueIdentifier() << " again!"<<std::endl;
-		}
-
-		if(sensorResource && ledResource && lcdResource && buzzerResource && buttonResource) {
-			std::cout << "Found another resource, ignoring"<<std::endl;
-			return;
 		}
 
 		// Do some operations with resource object.
@@ -541,39 +498,48 @@ void foundResource(std::shared_ptr<OCResource> resource)
 			}
 
 			if(resourceURI == "/grovepi/sensor") {
-				sensorResource = resource;
-				// Call a local function which will internally invoke get API on the resource pointer
-				//getSensorRepresentation(resource);
+				if(sensorResource) {
+					std::cout << "Found another sensor resource, ignoring" << std::endl;
+				} else {
+					std::cout << "Find sensor resource" << std::endl;
+					sensorResource = resource;
+				}
 			}
 
 			if(resourceURI == "/grovepi/led") {
-				std::cout << "Find LED resource" << std::endl;
-				ledResource = resource;
-				// Call a local function which will internally invoke get API on the resource pointer
-				//getLedRepresentation(resource);
+				if(ledResource) {
+					std::cout << "Found another LED resource, ignoring" << std::endl;
+				} else {
+					std::cout << "Find LED resource" << std::endl;
+					ledResource = resource;
+				}
 			}
 
 			if(resourceURI == "/grovepi/lcd") {
-				std::cout << "Find LCD resource" << std::endl;
-				lcdResource = resource;
-				// Call a local function which will internally invoke get API on the resource pointer
-				//getLcdRepresentation(resource);
+				if(lcdResource) {
+					std::cout << "Found another LCD resource, ignoring" << std::endl;
+				} else {
+					std::cout << "Find LCD resource" << std::endl;
+					lcdResource = resource;
+				}
 			}
 
 			if(resourceURI == "/grovepi/buzzer") {
-				std::cout << "Find buzzer resource" << std::endl;
-				buzzerResource = resource;
-				// Call a local function which will internally invoke get API on the resource pointer
-				//getLcdRepresentation(resource);
+				if(buzzerResource) {
+					std::cout << "Found another buzzer resource, ignoring" << std::endl;
+				} else {
+					std::cout << "Find buzzer resource" << std::endl;
+					buzzerResource = resource;
+				}
 			}
 
 			if(resourceURI == "/grovepi/button") {
-				std::cout << "Find button resource" << std::endl;
-				buttonResource = resource;
-				// Call a local function which will internally invoke get API on the resource pointer
-				//getLcdRepresentation(resource);
-
-            			buttonResource->observe(observe_type, QueryParamsMap(), &onObserve);
+				if(buttonResource) {
+					std::cout << "Found another button resource, ignoring" << std::endl;
+				} else {
+					std::cout << "Find button resource" << std::endl;
+					buttonResource = resource;
+				}
 			}
 
 		} else {
@@ -593,22 +559,6 @@ void printUsage()
 	std::cout << "Usage :" << std::endl;
 	std::cout << "democlient <influxdb IP address>:<port>" << std::endl;
 	std::cout << "---------------------------------------------------------------------\n\n";
-}
-
-void checkObserverValue(int value)
-{
-#if 0
-	if (value == 1) {
-		OBSERVE_TYPE_TO_USE = ObserveType::Observe;
-		std::cout << "<===Setting ObserveType to Observe===>\n\n";
-	} else if (value == 2) {
-		OBSERVE_TYPE_TO_USE = ObserveType::ObserveAll;
-		std::cout << "<===Setting ObserveType to ObserveAll===>\n\n";
-	} else {
-		std::cout << "<===Invalid ObserveType selected."
-		<< " Setting ObserveType to Observe===>\n\n";
-	}
-#endif
 }
 
 static FILE* client_open(const char* /*path*/, const char *mode)
@@ -669,24 +619,34 @@ static void buzzer_write(double b)
 	putBuzzerRepresentation(buzzerResource);
 }
 
+static void button_register(int cmd)
+{
+	if(cmd)
+		buttonResource->observe(observe_type, QueryParamsMap(), &onObserve);
+	else
+		buttonResource->cancelObserve();
+
+}
+
 static void print_menu()
 {
 	std::cout << "Demo client menu" << std::endl;
-	std::cout << "1 : read sensors" << std::endl;
-	std::cout << "2 : control LEDs" << std::endl;
-	std::cout << "3 : write string to LCD" << std::endl;
+	std::cout << "1 : Read sensors" << std::endl;
+	std::cout << "2 : Control LEDs" << std::endl;
+	std::cout << "3 : Write string to LCD" << std::endl;
 	std::cout << "4 : Write buzzer" << std::endl;
+	std::cout << "5 : Button control" << std::endl;
 }
 
 static void print_menu_led()
 {
-	std::cout << "1 : turn on red LED" << std::endl;
-	std::cout << "2 : turn on green LED" << std::endl;
-	std::cout << "3 : turn on blue LED" << std::endl;
-	std::cout << "4 : turn off red LED" << std::endl;
-	std::cout << "5 : turn off green LED" << std::endl;
-	std::cout << "6 : turn off blue LED" << std::endl;
-	std::cout << "7 : read LED status" << std::endl;
+	std::cout << "1 : Turn on red LED" << std::endl;
+	std::cout << "2 : Turn on green LED" << std::endl;
+	std::cout << "3 : Turn on blue LED" << std::endl;
+	std::cout << "4 : Turn off red LED" << std::endl;
+	std::cout << "5 : Turn off green LED" << std::endl;
+	std::cout << "6 : Turn off blue LED" << std::endl;
+	std::cout << "7 : Read LED status" << std::endl;
 }
 
 static void print_menu_lcd()
@@ -697,6 +657,12 @@ static void print_menu_lcd()
 static void print_menu_buzzer()
 {
 	std::cout << "Enter how long to beep" << std::endl;
+}
+
+static void print_menu_button()
+{
+	std::cout << "1 : Register button status" << std::endl;
+	std::cout << "2 : De-register button status" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -712,7 +678,7 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	std::cout << "Configuring ... " << std::endl;
+	std::cout << "Configuring ... ";
 	// Create PlatformConfig object
 	PlatformConfig cfg {
 		OC::ServiceType::InProc,
@@ -724,6 +690,7 @@ int main(int argc, char* argv[]) {
 	};
 
 	OCPlatform::Configure(cfg);
+	std::cout << "done" << std::endl;
 
 	try {
 		std::string sensor_rt = "?rt=grovepi.sensor";
@@ -732,8 +699,6 @@ int main(int argc, char* argv[]) {
 		std::string buzzer_rt = "?rt=grovepi.buzzer";
 		std::string button_rt = "?rt=grovepi.button";
 
-		// makes it so that all boolean values are printed as 'true/false' in this stream
-		std::cout.setf(std::ios::boolalpha);
 		// Find all resources
 		requestURI << OC_RSRVD_WELL_KNOWN_URI << sensor_rt;
 		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
@@ -758,16 +723,7 @@ int main(int argc, char* argv[]) {
 		requestURI << OC_RSRVD_WELL_KNOWN_URI << button_rt;
 		OCPlatform::findResource("", requestURI.str(), CT_DEFAULT, &foundResource);
 		std::cout<< "Finding Button Resource... " <<std::endl;
-#if 0
-		// A condition variable will free the mutex it is given, then do a non-
-		// intensive block until 'notify' is called on it.  In this case, since we
-		// don't ever call cv.notify, this should be a non-processor intensive version
-		// of while(true);
-		std::mutex blocker;
-		std::condition_variable cv;
-		std::unique_lock<std::mutex> lock(blocker);
-		cv.wait(lock);
-#else
+
 		while(true) {
 #if 1
 			int cmd, cmd1;
@@ -799,6 +755,11 @@ int main(int argc, char* argv[]) {
 					std::cin >> buzz_time;
 					buzzer_write(buzz_time);
 					break;
+				case 5:
+					print_menu_button();
+					std::cin >> cmd1;
+					button_register(cmd1);
+					break;
 				default:
 					std::cout << "Unknown option: " << cmd << std::endl;
 			}
@@ -807,7 +768,6 @@ int main(int argc, char* argv[]) {
 			sleep(3);
 #endif
 		}
-#endif
 	}
 	catch(OCException& e) {
 		oclog() << "Exception in main: "<<e.what();
