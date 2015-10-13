@@ -45,6 +45,7 @@ std::mutex curResourceLock;
 class Demo
 {
 public:
+	int debug_mode;
 	std::string influxdb_ip;
 
 	double sensor_temp;
@@ -58,7 +59,8 @@ public:
 	double buzzer;
 	int button;
 
-	Demo() : sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), sensor_sound(0),
+	Demo() : debug_mode(0),
+		sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), sensor_sound(0),
 		led_red(0), led_green(0), led_blue(0),
 	  	lcd_str("LCD Demo"),
 		buzzer(0.0),
@@ -153,10 +155,10 @@ void onObserveButton(const HeaderOptions /*headerOptions*/, const OCRepresentati
 	}
 }
 
+#if 0
 void onPost(const HeaderOptions& /*headerOptions*/,
         const OCRepresentation& rep, const int eCode)
 {
-#if 0
 	try {
 		if(eCode == OC_STACK_OK || eCode == OC_STACK_RESOURCE_CREATED) {
 			std::cout << "POST request was successful" << std::endl;
@@ -192,13 +194,11 @@ void onPost(const HeaderOptions& /*headerOptions*/,
 	catch(std::exception& e) {
 		std::cout << "Exception: " << e.what() << " in onPost" << std::endl;
 	}
-#endif
 }
 
 // Local function to put a different state for this resource
 void postDemoRepresentation(std::shared_ptr<OCResource> resource)
 {
-#if 0
 	if(resource) {
 		OCRepresentation rep;
 
@@ -212,8 +212,8 @@ void postDemoRepresentation(std::shared_ptr<OCResource> resource)
 		// Invoke resource's post API with rep, query map and the callback parameter
 		resource->post(rep, QueryParamsMap(), &onPost);
 	}
-#endif
 }
+#endif
 
 // callback handler on PUT request
 void onPutSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation& rep, const int eCode)
@@ -232,7 +232,6 @@ void onPutSensor(const HeaderOptions& /*headerOptions*/, const OCRepresentation&
 			std::cout << "\tlight: " << mydemo.sensor_light << std::endl;
 			std::cout << "\tsound: " << mydemo.sensor_sound << std::endl;
 
-			//postDemoRepresentation(sensorResource);
 		} else {
 			std::cout << "onPutSensor Response error: " << eCode << std::endl;
 			std::exit(-1);
@@ -576,11 +575,6 @@ static void led_read()
 	getLedRepresentation(ledResource);
 }
 
-static void button_read()
-{
-	getButtonRepresentation(buttonResource);
-}
-
 static void led_write(int led)
 {
 	switch(led) {
@@ -619,12 +613,19 @@ static void buzzer_write(double b)
 	putBuzzerRepresentation(buzzerResource);
 }
 
+static void button_read()
+{
+	getButtonRepresentation(buttonResource);
+}
+
 static void button_register(int cmd)
 {
 	if(cmd == 1)
 		buttonResource->observe(observe_type, QueryParamsMap(), &onObserveButton);
 	else if(cmd == 2)
 		buttonResource->cancelObserve();
+	else
+		button_read();
 }
 
 static void print_menu()
@@ -663,6 +664,7 @@ static void print_menu_button()
 {
 	std::cout << "1 : Register button status" << std::endl;
 	std::cout << "2 : De-register button status" << std::endl;
+	std::cout << "3 : Read button status" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -670,9 +672,11 @@ int main(int argc, char* argv[]) {
 	std::ostringstream requestURI;
 	OCPersistentStorage ps {client_open, fread, fwrite, fclose, unlink };
 
-	if(argc == 2) {
+	if(argc >= 2) {
 		mydemo.influxdb_ip = argv[1];
 		std::cout << "Infruxdb_ip: " << mydemo.influxdb_ip << std::endl;
+		if(argc == 3 && argv[2][0] == '1')
+			mydemo.debug_mode = 1;
 	} else {
 		printUsage();
 		return 0;
@@ -742,78 +746,77 @@ int main(int argc, char* argv[]) {
 
 
 		while(true) {
+			if(mydemo.debug_mode) {
+				int cmd, cmd1;
+				std::string str;
+				double buzz_time;
+				print_menu();
+				std::cin >> cmd;
+				switch(cmd) {
+					case 0:
+						break;
+					case 1:
+						sensor_read();
+						break;
+					case 2:
+						print_menu_led();
+						std::cin >> cmd1;
+						if(cmd1 >=1 && cmd1 <=6)
+							led_write(cmd1);
+						else if(cmd1 == 7)
+							led_read();
+						else
+							std::cout << "Unknown option: " << cmd1 << std::endl;
+						break;
+					case 3:
+						print_menu_lcd();
+						std::cin >> str;
+						lcd_write(str);
+						break;
+					case 4:
+						print_menu_buzzer();
+						std::cin >> buzz_time;
+						buzzer_write(buzz_time);
+						break;
+					case 5:
+						print_menu_button();
+						std::cin >> cmd1;
+						if(cmd1 >= 1 && cmd1 <= 3)
+							std::cout << "Unknown option: " << cmd1 << std::endl;
+						else
+							button_register(cmd1);
+						break;
+					default:
+						std::cout << "Unknown option: " << cmd << std::endl;
+				}
+			} else {
+				sensor_read();
+				sleep(3);
 #if 0
-			int cmd, cmd1;
-			std::string str;
-			double buzz_time;
-			print_menu();
-			std::cin >> cmd;
-			switch(cmd) {
-				case 0:
-					break;
-				case 1:
-					sensor_read();
-					break;
-				case 2:
-					print_menu_led();
-					std::cin >> cmd1;
-					if(cmd1 >=1 && cmd1 <=6)
-						led_write(cmd1);
-					else if(cmd1 == 7)
-						led_read();
-					else
-						std::cout << "Unknown option: " << cmd1 << std::endl;
-					break;
-				case 3:
-					print_menu_lcd();
-					std::cin >> str;
-					lcd_write(str);
-					break;
-				case 4:
-					print_menu_buzzer();
-					std::cin >> buzz_time;
-					buzzer_write(buzz_time);
-					break;
-				case 5:
-					print_menu_button();
-					std::cin >> cmd1;
-					if(cmd1 != 1 && cmd1 != 2)
-						std::cout << "Unknown option: " << cmd1 << std::endl;
-					else
-						button_register(cmd1);
-					break;
-				default:
-					std::cout << "Unknown option: " << cmd << std::endl;
-			}
-#else
+				double curr_light = mydemo.sensor_light;
+				double curr_temp = mydemo.sensor_temp;
 
-			sensor_read();
-			sleep(3);
-#if 0
-			double curr_light = mydemo.sensor_light;
-			double curr_temp = mydemo.sensor_temp;
+				if(mydemo.sensor_light < 550 && curr_light >= 550) {
+					led_write(3);
+					curr_light = mydemo.sensor_light;
+				} else if(mydemo.sensor_light >= 550 && curr_light < 550) {
+					led_write(6);
+					curr_light = mydemo.sensor_light;
+				}
 
-			if(mydemo.sensor_light < 550 && curr_light >= 550) {
-				led_write(3);
-				curr_light = mydemo.sensor_light;
-			} else if(mydemo.sensor_light >= 550 && curr_light < 550) {
-				led_write(6);
-				curr_light = mydemo.sensor_light;
-			}
-
-			if(mydemo.sensor_temp < 25 && curr_temp >= 25) {
-				mydemo.led_red = 0;
-				mydemo.led_green = 1;
-				putLedRepresentation(ledResource);
-				curr_temp = mydemo.sensor_temp;
-			} else if(mydemo.sensor_temp >= 25 && curr_temp < 25) {
-				mydemo.led_red = 1;
-				mydemo.led_green = 0;
-				putLedRepresentation(ledResource);
-				curr_temp = mydemo.sensor_temp;
-			}
+				if(mydemo.sensor_temp < 25 && curr_temp >= 25) {
+					mydemo.led_red = 0;
+					mydemo.led_green = 1;
+					putLedRepresentation(ledResource);
+					curr_temp = mydemo.sensor_temp;
+				} else if(mydemo.sensor_temp >= 25 && curr_temp < 25) {
+					mydemo.led_red = 1;
+					mydemo.led_green = 0;
+					putLedRepresentation(ledResource);
+					curr_temp = mydemo.sensor_temp;
+				}
 #endif
-#endif
+			}
 		}
 	}
 	catch(OCException& e) 
