@@ -35,10 +35,7 @@ bool isSecure = false;
 /// Specifies whether Entity handler is going to do slow response or not
 bool isSlowResponse = false;
 
-// Forward declaring the entityHandler
-
-/// This class represents a single resource named 'lightResource'. This resource has
-/// two simple properties named 'state' and 'power'
+mutex py_func_lock;
 
 class DemoResource
 {
@@ -79,12 +76,15 @@ public:
 	DemoResource()
 		:demo_name("Demo resource"), 
 		sensor_temp(0.0), sensor_humidity(0.0), sensor_light(0), sensor_sound(0),
-		led_red(0), led_green(0), led_blue(0), 
+		sensor_resourceHandle(nullptr),
+		led_red(0), led_green(0), led_blue(0),
+		led_resourceHandle(nullptr),
 		lcd_str("LCD Demo"),
+		lcd_resourceHandle(nullptr), 
 		buzzer(0.0),
+		buzzer_resourceHandle(nullptr),
 		button(0),
-		sensor_resourceHandle(nullptr), led_resourceHandle(nullptr), lcd_resourceHandle(nullptr), 
-		buzzer_resourceHandle(nullptr), button_resourceHandle(nullptr)
+	       	button_resourceHandle(nullptr)
 	{
 		// Initialize representation
 		sensor_rep.setUri("/grovepi/sensor");
@@ -116,11 +116,9 @@ public:
 	/// This function internally calls registerResource API.
 	void createResource()
 	{
-		//URI of the resource
+		// Sensor resource
 		std::string resourceURI = "/grovepi/sensor";
-		//resource type name. In this case, it is light
 		std::string resourceTypeName = "grovepi.sensor";
-		// resource interface.
 		std::string resourceInterface = DEFAULT_INTERFACE;
 
 		// OCResourceProperty is defined ocstack.h
@@ -130,6 +128,7 @@ public:
 		else
 			resourceProperty = OC_DISCOVERABLE | OC_OBSERVABLE;
 
+		// Resource callback functions
 		EntityHandler sensor_cb = std::bind(&DemoResource::sensor_entityHandler, this,PH::_1);
 		EntityHandler led_cb = std::bind(&DemoResource::led_entityHandler, this,PH::_1);
 		EntityHandler lcd_cb = std::bind(&DemoResource::lcd_entityHandler, this,PH::_1);
@@ -187,6 +186,8 @@ public:
 
 	void py_prolog(PyObject **filename, PyObject **module, PyObject **dict, PyObject **func, char *func_name)
 	{
+		py_lock();
+
 		// Initialize the Python Interpreter
 		Py_Initialize();
 		PyErr_Print();
@@ -212,6 +213,18 @@ public:
 		Py_DECREF(*func);
 		// Finish the Python Interpreter
 		Py_Finalize();
+
+		py_unlock();
+	}
+
+	void py_lock()
+	{
+		py_func_lock.lock();
+	}
+
+	void py_unlock()
+	{
+		py_func_lock.unlock();
 	}
 
 	PyObject* py_func(char *func_name)
@@ -507,13 +520,13 @@ public:
 		}
 	}
 
+#if 0
 	// Post representation.
 	// Post can create new resource or simply act like put.
 	// Gets values from the representation and
 	// updates the internal state
 	OCRepresentation post(OCRepresentation& rep)
 	{
-#if 0
 		static int first = 1;
 
 		// for the first time it tries to create a resource
@@ -532,9 +545,10 @@ public:
 
 		// from second time onwards it just puts
 		put(rep);
-#endif
+
 		return get_sensor();
 	}
+#endif
 
 
 	// gets the updated representation.
@@ -554,12 +568,6 @@ public:
 
 	OCRepresentation get_led()
 	{
-#if 0
-		// LED status can not be read, set pin mode to INPUT will turn off the LED
-		led_red = led_read_red();
-		led_green = led_read_green();
-		led_blue = led_read_blue();
-#endif
 		led_rep.setValue("red", led_red);
 		led_rep.setValue("green", led_green);
 		led_rep.setValue("blue", led_blue);
@@ -584,6 +592,7 @@ public:
 		return button_rep;
 	}
 
+#if 0
 	void addType(const std::string& type) const
 	{
 		OCStackResult result = OCPlatform::bindTypeToResource(sensor_resourceHandle, type);
@@ -597,6 +606,7 @@ public:
 		if (OC_STACK_OK != result)
 			cout << "Binding TypeName to Resource was unsuccessful\n";
 	}
+#endif
 
 private:
 	// This is just a sample implementation of entity handler.
@@ -877,14 +887,6 @@ private:
 
 				if(requestType == "GET") {
 					cout << "\t\t\trequestType : GET\n";
-#if 0
-					pResponse->setErrorCode(200);
-					pResponse->setResponseResult(OC_EH_OK);
-					pResponse->setResourceRepresentation(get_lcd());
-					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse)) {
-						ehResult = OC_EH_OK;
-					}
-#endif
 				} else if(requestType == "PUT") {
 					cout << "\t\t\trequestType : PUT\n";
 					OCRepresentation rep = request->getResourceRepresentation();
@@ -900,23 +902,6 @@ private:
 					}
 				} else if(requestType == "POST") {
 					cout << "\t\t\trequestType : POST\n";
-#if 0
-					OCRepresentation rep = request->getResourceRepresentation();
-
-					// Do related operations related to POST request
-					OCRepresentation rep_post = post(rep);
-					pResponse->setResourceRepresentation(rep_post);
-					pResponse->setErrorCode(200);
-					if(rep_post.hasAttribute("createduri")) {
-						pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
-						pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
-					} else {
-						pResponse->setResponseResult(OC_EH_OK);
-					}
-
-					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-						ehResult = OC_EH_OK;
-#endif
 				} else if(requestType == "DELETE") {
 					cout << "Delete request received" << endl;
 				}
@@ -979,38 +964,8 @@ private:
 					}
 				} else if(requestType == "PUT") {
 					cout << "\t\t\trequestType : PUT\n";
-#if 0
-					OCRepresentation rep = request->getResourceRepresentation();
-
-					// Do related operations related to PUT request
-					// Update the lightResource
-					put_buzzer(rep);
-					pResponse->setErrorCode(200);
-					pResponse->setResponseResult(OC_EH_OK);
-					pResponse->setResourceRepresentation(get_buzzer());
-					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse)) {
-						ehResult = OC_EH_OK;
-					}
-#endif
 				} else if(requestType == "POST") {
 					cout << "\t\t\trequestType : POST\n";
-#if 0
-					OCRepresentation rep = request->getResourceRepresentation();
-
-					// Do related operations related to POST request
-					OCRepresentation rep_post = post(rep);
-					pResponse->setResourceRepresentation(rep_post);
-					pResponse->setErrorCode(200);
-					if(rep_post.hasAttribute("createduri")) {
-						pResponse->setResponseResult(OC_EH_RESOURCE_CREATED);
-						pResponse->setNewResourceUri(rep_post.getValue<std::string>("createduri"));
-					} else {
-						pResponse->setResponseResult(OC_EH_OK);
-					}
-
-					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
-						ehResult = OC_EH_OK;
-#endif
 				} else if(requestType == "DELETE") {
 					cout << "Delete request received" << endl;
 				}
