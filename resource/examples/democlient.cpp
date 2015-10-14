@@ -745,6 +745,10 @@ int main(int argc, char* argv[]) {
 		}
 
 
+		double curr_light = mydemo.sensor_light;
+		//double curr_temp = mydemo.sensor_temp;
+		double curr_temp = mydemo.sensor_temp = 100;
+
 		while(true) {
 			if(mydemo.debug_mode) {
 				int cmd, cmd1;
@@ -791,15 +795,14 @@ int main(int argc, char* argv[]) {
 				}
 			} else {
 				sensor_read();
-				sleep(3);
-#if 0
-				double curr_light = mydemo.sensor_light;
-				double curr_temp = mydemo.sensor_temp;
-
-				if(mydemo.sensor_light < 550 && curr_light >= 550) {
+				sleep(1.5);
+#if 1
+				if(mydemo.sensor_light < 580 && curr_light >= 580) {
+					std::cout << "Light status change" << std::endl;
 					led_write(3);
 					curr_light = mydemo.sensor_light;
-				} else if(mydemo.sensor_light >= 550 && curr_light < 550) {
+				} else if(mydemo.sensor_light >= 580 && curr_light < 580) {
+					std::cout << "Light status change" << std::endl;
 					led_write(6);
 					curr_light = mydemo.sensor_light;
 				}

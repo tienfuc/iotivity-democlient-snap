@@ -5,6 +5,9 @@
 #include <netdb.h>
 #include <unistd.h>
 
+#include <queue>
+#include <list>
+
 #include <functional>
 
 #include <pthread.h>
@@ -19,9 +22,13 @@ using namespace std;
 namespace PH = std::placeholders;
 
 int gObservation = 0;
-void * CheckButtonRepresentation (void *param);
+void * CheckButtonRepresentation(void *param);
+void * grovepi_thread(void *param);
+queue <void (*)(void *)> write_queue;
+void t_write_led_red(void *);
+void t_write_led_green(void *);
+void t_write_led_blue(void *);
 void * handleSlowResponse (void *param, std::shared_ptr<OCResourceRequest> pRequest);
-
 // Specifies where to notify all observers or list of observers
 // false: notifies all observers
 // true: notifies list of observers
@@ -184,6 +191,14 @@ public:
 			cout << "Button resource creation was unsuccessful\n";
 	}
 
+	void start_update_thread()
+	{
+		pthread_t tid;
+
+		std::cout << "Start update thread" << std::endl;
+		pthread_create (&tid, NULL, grovepi_thread, (void *)this);
+	}
+
 	void py_prolog(PyObject **filename, PyObject **module, PyObject **dict, PyObject **func, char *func_name)
 	{
 		py_lock();
@@ -234,7 +249,7 @@ public:
 		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
 	
 		if(PyCallable_Check(p_func)) {
-			std::cout << "Access grovepi library" << std::endl;
+			//std::cout << "Access grovepi library" << std::endl;
 			p_result = PyObject_CallObject(p_func, NULL);
 			PyErr_Print();
 		} else {
@@ -254,7 +269,7 @@ public:
 		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
 	
 		if(PyCallable_Check(p_func)) {
-			std::cout << "Access grovepi library" << std::endl;
+			//std::cout << "Access grovepi library" << std::endl;
 			p_value = Py_BuildValue("(i)", value);
 			p_result = PyObject_CallObject(p_func, p_value);
 			PyErr_Print();
@@ -275,7 +290,7 @@ public:
 		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
 	
 		if(PyCallable_Check(p_func)) {
-			std::cout << "Access grovepi library" << std::endl;
+			//std::cout << "Access grovepi library" << std::endl;
 			p_value = Py_BuildValue("(d)", value);
 			p_result = PyObject_CallObject(p_func, p_value);
 			PyErr_Print();
@@ -296,7 +311,7 @@ public:
 		py_prolog(&p_filename, &p_module, &p_dict, &p_func, func_name);
 	
 		if(PyCallable_Check(p_func)) {
-			std::cout << "Access grovepi library" << std::endl;
+			//std::cout << "Access grovepi library" << std::endl;
 			p_value = Py_BuildValue("(s)", str);
 			p_result = PyObject_CallObject(p_func, p_value);
 			PyErr_Print();
@@ -318,7 +333,7 @@ public:
 		if(p_result)
 			return PyFloat_AsDouble(p_result);
 		else
-			return -1;
+			return -256;
 	}
 
 	double sensor_read_humidity()
@@ -429,58 +444,81 @@ public:
 			return -1;
 	}
 
+	int update_ip()
+	{
+		struct ifaddrs *ifaddr, *ifa;
+		int s;
+		char host_ip[NI_MAXHOST];
+		std::string host_str;
+
+		if (getifaddrs(&ifaddr) == -1) {
+			std::cout << "getifaddrs error" << std::endl;
+			return -1;
+		}
+
+		for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+			if (ifa->ifa_addr == NULL)
+				continue;
+
+			if(!strcmp(ifa->ifa_name, "eth0") || !strcmp(ifa->ifa_name, "wlan0")) {
+				if(ifa->ifa_addr->sa_family == AF_INET) {
+					s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host_ip,
+						NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+					if(s) {
+						std::cout << " getnameinfo fail: " << gai_strerror(s) << std::endl;
+						freeifaddrs(ifaddr);
+						return -1;
+					}
+					//host_str = ifa->ifa_name;
+					host_str = "IPv4: ";
+					host_str += host_ip;
+					std::cout << host_str << std::endl;
+					break;
+				} else if(ifa->ifa_addr->sa_family == AF_INET6) {
+					s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), host_ip,
+						NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+					if(s) {
+						std::cout << " getnameinfo fail: " << gai_strerror(s) << std::endl;
+						freeifaddrs(ifaddr);
+						return -1;
+					}
+					//host_str = ifa->ifa_name;
+					host_str = "IPv6: ";
+					host_str += host_ip;
+					std::cout << host_str << std::endl;
+				}
+			}
+		}
+		freeifaddrs(ifaddr);
+
+		lcd_write_str(host_str.c_str());
+		lcd_str = host_str;
+		return 0;
+	}
 
 	// Puts representation.
 	// Gets values from the representation and
 	// updates the internal state
-	void put_sensor(OCRepresentation& rep)
-	{
-		try {
-			if (rep.getValue("temperature", sensor_temp))
-				cout << "\t\t\t\t" << "temperature: " << sensor_temp << endl;
-			else
-				cout << "\t\t\t\t" << "temperature not found in the representation" << endl;
-
-			if (rep.getValue("humidity", sensor_humidity))
-				cout << "\t\t\t\t" << "humidity: " << sensor_humidity << endl;
-			else
-				cout << "\t\t\t\t" << "humidity not found in the representation" << endl;
-
-			if (rep.getValue("light", sensor_light))
-				cout << "\t\t\t\t" << "light: " << sensor_light << endl;
-			else
-				cout << "\t\t\t\t" << "light not found in the representation" << endl;
-
-			if (rep.getValue("sound", sensor_sound))
-				cout << "\t\t\t\t" << "sound: " << sensor_sound << endl;
-			else
-				cout << "\t\t\t\t" << "sound not found in the representation" << endl;
-		} 
-		catch (exception& e) {
-			cout << e.what() << endl;
-		}
-	}
-
 	void put_led(OCRepresentation& rep)
 	{
 		try {
 			if (rep.getValue("red", led_red)) {
-				cout << "\t\t\t\t" << "Red LED: " << led_red << endl;
-				led_write_red(led_red);
+				//cout << "\t\t\t\t" << "Red LED: " << led_red << endl;
+				write_queue.push(t_write_led_red);
 			} else {
 				cout << "\t\t\t\t" << "red not found in the representation" << endl;
 			}
 
 			if (rep.getValue("green", led_green)) {
-				cout << "\t\t\t\t" << "Green LED: " << led_green << endl;
-				led_write_green(led_green);
+				//cout << "\t\t\t\t" << "Green LED: " << led_green << endl;
+				write_queue.push(t_write_led_green);
 			} else {
 				cout << "\t\t\t\t" << "green not found in the representation" << endl;
 			}
 
 			if (rep.getValue("blue", led_blue)) {
-				cout << "\t\t\t\t" << "Blue LED: " << led_blue << endl;
-				led_write_blue(led_blue);
+				//cout << "\t\t\t\t" << "Blue LED: " << led_blue << endl;
+				write_queue.push(t_write_led_blue);
 			} else {
 				cout << "\t\t\t\t" << "blue not found in the representation" << endl;
 			}
@@ -554,11 +592,12 @@ public:
 	// gets the updated representation.
 	OCRepresentation get_sensor()
 	{
+#if 0
 		sensor_temp = sensor_read_temp();
 		sensor_humidity = sensor_read_humidity();
 		sensor_light = sensor_read_light();
 		sensor_sound = sensor_read_sound();
-
+#endif
 		sensor_rep.setValue("temperature", sensor_temp);
 		sensor_rep.setValue("humidity", sensor_humidity);
 		sensor_rep.setValue("light", sensor_light);
@@ -613,7 +652,7 @@ private:
 	// Entity handler can be implemented in several ways by the manufacturer
 	OCEntityHandlerResult sensor_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		cout << "\tIn Server sensor entity handler:\n";
+		//cout << "\tIn Server sensor entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 		if(request) {
 			// Get the request type and request flag
@@ -621,7 +660,7 @@ private:
 			int requestFlag = request->getRequestHandlerFlag();
 
 			if(requestFlag & RequestHandlerFlag::RequestFlag) {
-				cout << "\t\trequestFlag : Request\n";
+				//cout << "\t\trequestFlag : Request\n";
 				auto pResponse = std::make_shared<OC::OCResourceResponse>();
 				pResponse->setRequestHandle(request->getRequestHandle());
 				pResponse->setResourceHandle(request->getResourceHandle());
@@ -676,7 +715,7 @@ private:
 
 	OCEntityHandlerResult led_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		cout << "\tIn Server CPP entity handler:\n";
+		//cout << "\tIn Server CPP entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -685,7 +724,7 @@ private:
 			int requestFlag = request->getRequestHandlerFlag();
 
 			if(requestFlag & RequestHandlerFlag::RequestFlag) {
-				cout << "\t\trequestFlag : Request\n";
+				//cout << "\t\trequestFlag : Request\n";
 				auto pResponse = std::make_shared<OC::OCResourceResponse>();
 				pResponse->setRequestHandle(request->getRequestHandle());
 				pResponse->setResourceHandle(request->getResourceHandle());
@@ -768,7 +807,7 @@ private:
 
 	OCEntityHandlerResult lcd_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		cout << "\tIn Server CPP entity handler:\n";
+		//cout << "\tIn Server CPP entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -777,7 +816,7 @@ private:
 			int requestFlag = request->getRequestHandlerFlag();
 
 			if(requestFlag & RequestHandlerFlag::RequestFlag) {
-				cout << "\t\trequestFlag : Request\n";
+				//cout << "\t\trequestFlag : Request\n";
 				auto pResponse = std::make_shared<OC::OCResourceResponse>();
 				pResponse->setRequestHandle(request->getRequestHandle());
 				pResponse->setResourceHandle(request->getResourceHandle());
@@ -860,7 +899,7 @@ private:
 
 	OCEntityHandlerResult buzzer_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		cout << "\tIn Server CPP entity handler:\n";
+		//cout << "\tIn Server CPP entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -869,7 +908,7 @@ private:
 			int requestFlag = request->getRequestHandlerFlag();
 
 			if(requestFlag & RequestHandlerFlag::RequestFlag) {
-				cout << "\t\trequestFlag : Request\n";
+				//cout << "\t\trequestFlag : Request\n";
 				auto pResponse = std::make_shared<OC::OCResourceResponse>();
 				pResponse->setRequestHandle(request->getRequestHandle());
 				pResponse->setResourceHandle(request->getResourceHandle());
@@ -929,7 +968,7 @@ private:
 
 	OCEntityHandlerResult button_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		cout << "\tIn Server CPP entity handler:\n";
+		//cout << "\tIn Server CPP entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -938,7 +977,7 @@ private:
 			int requestFlag = request->getRequestHandlerFlag();
 
 			if(requestFlag & RequestHandlerFlag::RequestFlag) {
-				cout << "\t\trequestFlag : Request\n";
+				//cout << "\t\trequestFlag : Request\n";
 				auto pResponse = std::make_shared<OC::OCResourceResponse>();
 				pResponse->setRequestHandle(request->getRequestHandle());
 				pResponse->setResourceHandle(request->getResourceHandle());
@@ -1009,6 +1048,113 @@ private:
 
 };
 
+
+void t_read_temp(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+	double value = pdemo->sensor_read_temp();
+	if(value == -256) {
+		cout << "Unable to read temperature sensor" << endl;
+	} else {
+		//cout << "Update temperature sensor: " << value << endl;
+		pdemo->sensor_temp = value;
+	}
+}	
+
+void t_read_humidity(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+	double value = pdemo->sensor_read_humidity();
+	if(value == -256) {
+		cout << "Unable to read humidity sensor" << endl;
+	} else {
+		//cout << "Update humidity sensor: " << value << endl;
+		pdemo->sensor_humidity = value;
+	}
+}	
+
+void t_read_light(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+	int value = pdemo->sensor_read_light();
+	if(value == -1) {
+		cout << "Unable to read light sensor" << endl;
+	} else {
+		//cout << "Update light sensor: " << value << endl;
+		pdemo->sensor_light = value;
+	}
+}	
+
+void t_read_sound(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+	int value = pdemo->sensor_read_sound();
+	if(value == -1) {
+		cout << "Unable to read sound sensor" << endl;
+	} else {
+		//cout << "Update sound sensor: " << value << endl;
+		pdemo->sensor_sound = value;
+	}
+}	
+
+void t_update_ip_on_lcd(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+	pdemo->update_ip();
+}
+
+
+void t_write_led_red(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+
+	pdemo->led_write_red(pdemo->led_red);
+}
+
+void t_write_led_green(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+
+	pdemo->led_write_green(pdemo->led_green);
+}
+
+void t_write_led_blue(void *param)
+{
+	DemoResource *pdemo = (DemoResource *)param;
+
+	pdemo->led_write_blue(pdemo->led_blue);
+}
+
+void * grovepi_thread(void *param)
+{
+	void (*w_func)(void *);
+	list <void (*)(void *)> read_func;
+	list <void (*)(void *)>::iterator iter_f;
+
+	read_func.push_back(t_read_temp);
+	read_func.push_back(t_read_humidity);
+	read_func.push_back(t_read_light);
+	read_func.push_back(t_read_sound);
+	iter_f = read_func.begin();
+
+	//cout << "Function pointer array size: " << read_func.size() << endl;	
+
+	while(1) {
+		if(write_queue.empty()) {
+			(*iter_f)(param);
+			iter_f++;
+			
+			if(iter_f == read_func.end())
+					iter_f = read_func.begin();
+		} else {
+			w_func = write_queue.front();
+			w_func(param);
+			write_queue.pop();
+		}
+	}
+
+	return NULL;
+}
 
 
 // CheckButtonRepresentaion is an observation function,
@@ -1105,11 +1251,6 @@ static FILE* client_open(const char* /*path*/, const char *mode)
 
 int main(int argc, char* argv[])
 {
-	struct ifaddrs *ifaddr, *ifa;
-	int s;
-	char host_ip[NI_MAXHOST];
-	std::string host_str;
-
 	OCPersistentStorage ps {client_open, fread, fwrite, fclose, unlink };
 
 	if (argc == 1) {
@@ -1140,46 +1281,6 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	if (getifaddrs(&ifaddr) == -1) {
-		std::cout << "getifaddrs error" << std::endl;
-		return -1;
-	}
-
-	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr == NULL)
-			continue;
-
-		if(!strcmp(ifa->ifa_name, "eth0") || !strcmp(ifa->ifa_name, "wlan0")) {
-			if(ifa->ifa_addr->sa_family == AF_INET) {
-				s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host_ip,
-					NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-				if(s) {
-					std::cout << " getnameinfo fail: " << gai_strerror(s) << std::endl;
-					freeifaddrs(ifaddr);
-					return -1;
-				}
-				//host_str = ifa->ifa_name;
-				host_str = "IPv4: ";
-				host_str += host_ip;
-				std::cout << host_str << std::endl;
-				break;
-			} else if(ifa->ifa_addr->sa_family == AF_INET6) {
-				s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in6), host_ip,
-					NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-				if(s) {
-					std::cout << " getnameinfo fail: " << gai_strerror(s) << std::endl;
-					freeifaddrs(ifaddr);
-					return -1;
-				}
-				//host_str = ifa->ifa_name;
-				host_str = "IPv6: ";
-				host_str += host_ip;
-				std::cout << host_str << std::endl;
-			}
-		}
-	}
-	freeifaddrs(ifaddr);
-
 	// Create PlatformConfig object
 	PlatformConfig cfg {
 		OC::ServiceType::InProc,
@@ -1199,8 +1300,10 @@ int main(int argc, char* argv[])
 		myDemo.createResource();
 		std::cout << "Created resource." << std::endl;
 	
-		myDemo.lcd_write_str(host_str.c_str());
-		myDemo.lcd_str = host_str;	
+		myDemo.update_ip();
+
+		myDemo.start_update_thread();
+
 		//myDemo.addType(std::string("demo.grovepi"));
 		//myDemo.addInterface(std::string(LINK_INTERFACE));
 		//std::cout << "Added Interface and Type" << std::endl;
