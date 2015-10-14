@@ -42,7 +42,6 @@ bool isSecure = false;
 /// Specifies whether Entity handler is going to do slow response or not
 bool isSlowResponse = false;
 
-mutex py_func_lock;
 
 class DemoResource
 {
@@ -75,9 +74,13 @@ public:
 	OCResourceHandle button_resourceHandle;
 	OCRepresentation button_rep;
 
+
 	ObservationIds m_interestedObservers;
 
 	//std::string py_path = "/home/u/demo/iotivity/extlibs/GrovePi/Software/Python";
+
+private:
+	mutex py_func_lock;
 
 public:
 	DemoResource()
@@ -506,21 +509,21 @@ public:
 				//cout << "\t\t\t\t" << "Red LED: " << led_red << endl;
 				write_queue.push(t_write_led_red);
 			} else {
-				cout << "\t\t\t\t" << "red not found in the representation" << endl;
+				cout << "red not found in the representation" << endl;
 			}
 
 			if (rep.getValue("green", led_green)) {
 				//cout << "\t\t\t\t" << "Green LED: " << led_green << endl;
 				write_queue.push(t_write_led_green);
 			} else {
-				cout << "\t\t\t\t" << "green not found in the representation" << endl;
+				cout << "green not found in the representation" << endl;
 			}
 
 			if (rep.getValue("blue", led_blue)) {
 				//cout << "\t\t\t\t" << "Blue LED: " << led_blue << endl;
 				write_queue.push(t_write_led_blue);
 			} else {
-				cout << "\t\t\t\t" << "blue not found in the representation" << endl;
+				cout << "blue not found in the representation" << endl;
 			}
 		}
 		catch (exception& e) {
@@ -532,10 +535,10 @@ public:
 	{
 		try {
 			if(rep.getValue("lcd", lcd_str)) {
-				cout << "\t\t\t\t" << "LCD string: " << lcd_str << endl;
+				cout  << "LCD string: " << lcd_str << endl;
 				lcd_write_str(lcd_str.c_str());
 			} else {
-				cout << "\t\t\t\t" << "LCD string not found in the representation" << endl;
+				cout  << "LCD string not found in the representation" << endl;
 			}
 		}
 		catch (exception& e) {
@@ -547,10 +550,10 @@ public:
 	{
 		try {
 			if(rep.getValue("buzzer", buzzer)) {
-				cout << "\t\t\t\t" << "Buzzer: " << buzzer << endl;
+				cout << "Buzzer: " << buzzer << endl;
 				buzzer_write(buzzer);
 			} else {
-				cout << "\t\t\t\t" << "buzzer not found in the representation" << endl;
+				cout << "buzzer not found in the representation" << endl;
 			}
 		}
 		catch (exception& e) {
@@ -592,12 +595,6 @@ public:
 	// gets the updated representation.
 	OCRepresentation get_sensor()
 	{
-#if 0
-		sensor_temp = sensor_read_temp();
-		sensor_humidity = sensor_read_humidity();
-		sensor_light = sensor_read_light();
-		sensor_sound = sensor_read_sound();
-#endif
 		sensor_rep.setValue("temperature", sensor_temp);
 		sensor_rep.setValue("humidity", sensor_humidity);
 		sensor_rep.setValue("light", sensor_light);
@@ -652,7 +649,7 @@ private:
 	// Entity handler can be implemented in several ways by the manufacturer
 	OCEntityHandlerResult sensor_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		//cout << "\tIn Server sensor entity handler:\n";
+		cout << "In Server sensor entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 		if(request) {
 			// Get the request type and request flag
@@ -677,20 +674,20 @@ private:
 
 				if(requestType == "GET")
 				{
-					cout << "\t\t\trequestType : GET\n";
+					cout << "\trequestType : GET\n";
 					pResponse->setErrorCode(200);
 					pResponse->setResponseResult(OC_EH_OK);
 					pResponse->setResourceRepresentation(get_sensor());
 					if(OC_STACK_OK == OCPlatform::sendResponse(pResponse))
 						ehResult = OC_EH_OK;
 				} else if(requestType == "PUT") {
-					cout << "\t\t\trequestType : PUT\n";
+					cout << "\trequestType : PUT\n";
 					cout << "Sensors don't have PUT method" << endl;
 				} else if(requestType == "POST") {
-					cout << "\t\t\trequestType : POST\n";
+					cout << "\trequestType : POST\n";
 					cout << "Sensors don't have POST method" << endl;
 				} else if(requestType == "DELETE") {
-					cout << "Delete request received" << endl;
+					cout << "\tDelete request received" << endl;
 				}
 			}
 
@@ -715,7 +712,7 @@ private:
 
 	OCEntityHandlerResult led_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		//cout << "\tIn Server CPP entity handler:\n";
+		cout << "In Server LED entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -741,7 +738,7 @@ private:
 				}
 
 				if(requestType == "GET") {
-					cout << "\t\t\trequestType : GET\n";
+					cout << "\trequestType : GET\n";
 					pResponse->setErrorCode(200);
 					pResponse->setResponseResult(OC_EH_OK);
 					pResponse->setResourceRepresentation(get_led());
@@ -749,7 +746,7 @@ private:
 						ehResult = OC_EH_OK;
 					}
 				} else if(requestType == "PUT") {
-					cout << "\t\t\trequestType : PUT\n";
+					cout << "\trequestType : PUT\n";
 					OCRepresentation rep = request->getResourceRepresentation();
 
 					// Do related operations related to PUT request
@@ -762,7 +759,7 @@ private:
 						ehResult = OC_EH_OK;
 					}
 				} else if(requestType == "POST") {
-					cout << "\t\t\trequestType : POST\n";
+					cout << "\trequestType : POST\n";
 #if 0
 					OCRepresentation rep = request->getResourceRepresentation();
 
@@ -781,7 +778,7 @@ private:
 						ehResult = OC_EH_OK;
 #endif
 				} else if(requestType == "DELETE") {
-					cout << "Delete request received" << endl;
+					cout << "\tDelete request received" << endl;
 				}
 			}
 
@@ -807,7 +804,7 @@ private:
 
 	OCEntityHandlerResult lcd_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		//cout << "\tIn Server CPP entity handler:\n";
+		cout << "In Server LCD entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -833,7 +830,7 @@ private:
 				}
 
 				if(requestType == "GET") {
-					cout << "\t\t\trequestType : GET\n";
+					cout << "\trequestType : GET\n";
 					pResponse->setErrorCode(200);
 					pResponse->setResponseResult(OC_EH_OK);
 					pResponse->setResourceRepresentation(get_lcd());
@@ -841,7 +838,7 @@ private:
 						ehResult = OC_EH_OK;
 					}
 				} else if(requestType == "PUT") {
-					cout << "\t\t\trequestType : PUT\n";
+					cout << "\trequestType : PUT\n";
 					OCRepresentation rep = request->getResourceRepresentation();
 
 					// Do related operations related to PUT request
@@ -854,7 +851,7 @@ private:
 						ehResult = OC_EH_OK;
 					}
 				} else if(requestType == "POST") {
-					cout << "\t\t\trequestType : POST\n";
+					cout << "\trequestType : POST\n";
 #if 0
 					OCRepresentation rep = request->getResourceRepresentation();
 
@@ -873,7 +870,7 @@ private:
 						ehResult = OC_EH_OK;
 #endif
 				} else if(requestType == "DELETE") {
-					cout << "Delete request received" << endl;
+					cout << "\tDelete request received" << endl;
 				}
 			}
 
@@ -899,7 +896,7 @@ private:
 
 	OCEntityHandlerResult buzzer_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		//cout << "\tIn Server CPP entity handler:\n";
+		cout << "In Server buzzer entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -925,9 +922,9 @@ private:
 				}
 
 				if(requestType == "GET") {
-					cout << "\t\t\trequestType : GET\n";
+					cout << "\trequestType : GET\n";
 				} else if(requestType == "PUT") {
-					cout << "\t\t\trequestType : PUT\n";
+					cout << "\trequestType : PUT\n";
 					OCRepresentation rep = request->getResourceRepresentation();
 
 					// Do related operations related to PUT request
@@ -940,9 +937,9 @@ private:
 						ehResult = OC_EH_OK;
 					}
 				} else if(requestType == "POST") {
-					cout << "\t\t\trequestType : POST\n";
+					cout << "\trequestType : POST\n";
 				} else if(requestType == "DELETE") {
-					cout << "Delete request received" << endl;
+					cout << "\tDelete request received" << endl;
 				}
 			}
 
@@ -968,7 +965,7 @@ private:
 
 	OCEntityHandlerResult button_entityHandler(std::shared_ptr<OCResourceRequest> request)
 	{
-		//cout << "\tIn Server CPP entity handler:\n";
+		cout << "In Server button entity handler:\n";
 		OCEntityHandlerResult ehResult = OC_EH_ERROR;
 
 		if(request) {
@@ -994,7 +991,7 @@ private:
 				}
 
 				if(requestType == "GET") {
-					cout << "\t\t\trequestType : GET\n";
+					cout << "\trequestType : GET\n";
 					pResponse->setErrorCode(200);
 					pResponse->setResponseResult(OC_EH_OK);
 					pResponse->setResourceRepresentation(get_button());
@@ -1002,11 +999,11 @@ private:
 						ehResult = OC_EH_OK;
 					}
 				} else if(requestType == "PUT") {
-					cout << "\t\t\trequestType : PUT\n";
+					cout << "\trequestType : PUT\n";
 				} else if(requestType == "POST") {
-					cout << "\t\t\trequestType : POST\n";
+					cout << "\trequestType : POST\n";
 				} else if(requestType == "DELETE") {
-					cout << "Delete request received" << endl;
+					cout << "\tDelete request received" << endl;
 				}
 			}
 
@@ -1025,7 +1022,7 @@ private:
 
 				pthread_t threadId;
 
-				cout << "\t\trequestFlag : Observer\n";
+				cout << "\trequestFlag : Observer\n";
 				gObservation = 1;
 
 				static int startedThread = 0;
@@ -1053,6 +1050,7 @@ void t_read_temp(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
 	double value = pdemo->sensor_read_temp();
+
 	if(value == -256) {
 		cout << "Unable to read temperature sensor" << endl;
 	} else {
@@ -1065,6 +1063,7 @@ void t_read_humidity(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
 	double value = pdemo->sensor_read_humidity();
+
 	if(value == -256) {
 		cout << "Unable to read humidity sensor" << endl;
 	} else {
@@ -1077,6 +1076,7 @@ void t_read_light(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
 	int value = pdemo->sensor_read_light();
+
 	if(value == -1) {
 		cout << "Unable to read light sensor" << endl;
 	} else {
@@ -1089,6 +1089,7 @@ void t_read_sound(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
 	int value = pdemo->sensor_read_sound();
+
 	if(value == -1) {
 		cout << "Unable to read sound sensor" << endl;
 	} else {
@@ -1107,21 +1108,18 @@ void t_update_ip_on_lcd(void *param)
 void t_write_led_red(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
-
 	pdemo->led_write_red(pdemo->led_red);
 }
 
 void t_write_led_green(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
-
 	pdemo->led_write_green(pdemo->led_green);
 }
 
 void t_write_led_blue(void *param)
 {
 	DemoResource *pdemo = (DemoResource *)param;
-
 	pdemo->led_write_blue(pdemo->led_blue);
 }
 
@@ -1137,7 +1135,7 @@ void * grovepi_thread(void *param)
 	read_func.push_back(t_read_sound);
 	iter_f = read_func.begin();
 
-	//cout << "Function pointer array size: " << read_func.size() << endl;	
+	//cout << "Function pointer list size: " << read_func.size() << endl;	
 
 	while(1) {
 		if(write_queue.empty()) {
