@@ -86,8 +86,6 @@ out/
 platform
 
 # Ignore downloaded dependencies
-extlibs/gtest/gtest-*
-extlibs/hippomocks-master/
 extlibs/master.zip
 extlibs/cereal/cereal
 extlibs/expat/expat*
