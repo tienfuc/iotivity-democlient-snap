@@ -1,6 +1,0 @@
-[submodule "extlibs/GrovePi"]
-	path = extlibs/GrovePi
-	url = lp:~fukuoka-team/fukuoka/+git/GrovePi
-[submodule "extlibs/tinycbor/tinycbor"]
-	path = extlibs/tinycbor/tinycbor
-	url = lp:~fukuoka-team/fukuoka/+git/tinycbor
